@@ -226,31 +226,21 @@ class Link {
         this.state2 = 1; // 1 represents link down. of.OFPPS_LINK_DOWN in POX.
     }
 }
+ 
+public class MACTracker implements IFloodlightModule, IOFSwitchListener {
+    protected Map<String, IPv4Address> switches;
+    protected List<String> ctrls;
+    protected List<Link> links;
+    protected Map<String, IPv4Address> hosts;
+    protected Map<String, Link> intf2link;
+    protected Map<String, Map<String, Link>> sw2link;
+    protected NetworkX networkGraph;
 
-class Graph {
-    public Map<String, IPv4Address> switches;
-    public List<String> ctrls;
-    public List<Link> links;
-    public Map<String, IPv4Address> hosts;
-    public Map<String, Link> intf2link;
-    public Map<String, Map<String, Link>> sw2link;
-    public NetworkX networkGraph;
+    protected IOFSwitchService switchService;
+    protected static Logger logger;
 
-    public Graph() {
-        switches = new HashMap<String, IPv4Address>();
-        ctrls = new ArrayList<String>();
-        links = new ArrayList<Link>();
-        hosts = new HashMap<String, IPv4Address>();
-        intf2link = new HashMap<String, Link>();
-        sw2link = new HashMap<String, Map<String, Link>>();
-        networkGraph = new NetworkX();
-    }
-}
-
-class JSONParser {
-    public static Graph loadTopology(String jsonData) throws IOException{
+    public void loadTopology(String jsonData) throws IOException{
         JsonParser jsonParser = new JsonFactory().createParser(jsonData);
-        Graph g = new Graph();
 
         jsonParser.nextToken();
         if (jsonParser.getCurrentToken() != JsonToken.START_OBJECT) {
@@ -273,7 +263,7 @@ class JSONParser {
 
                 while (jsonParser.nextToken() != JsonToken.END_OBJECT) {
                     jsonParser.nextToken();
-                    g.switches.put(jsonParser.getCurrentName(), IPv4Address.of(jsonParser.getText()));
+                    this.switches.put(jsonParser.getCurrentName(), IPv4Address.of(jsonParser.getText()));
                 }
             } else if ("hosts".equals(name)) {
                 jsonParser.nextToken();
@@ -284,7 +274,7 @@ class JSONParser {
 
                 while (jsonParser.nextToken() != JsonToken.END_OBJECT) {
                     jsonParser.nextToken();
-                    g.hosts.put(jsonParser.getCurrentName(), IPv4Address.of(jsonParser.getText()));
+                    this.hosts.put(jsonParser.getCurrentName(), IPv4Address.of(jsonParser.getText()));
                 }
             } else if ("ctrls".equals(name)) {
                 jsonParser.nextToken();
@@ -294,7 +284,7 @@ class JSONParser {
                 }
 
                 while (jsonParser.nextToken() != JsonToken.END_ARRAY) {
-                    g.ctrls.add(jsonParser.getText());
+                    this.ctrls.add(jsonParser.getText());
                 }
             } else if ("links".equals(name)) {
                 jsonParser.nextToken();
@@ -321,70 +311,62 @@ class JSONParser {
                         // SW1, INTF1, SW2, INTF2
                         tempLink = new Link(tempStrings.get(0), tempStrings.get(1), tempStrings.get(2), tempStrings.get(3));
 
-                        g.links.add(tempLink);
-                        g.intf2link.put(tempStrings.get(0) + ":" + tempStrings.get(1),tempLink);
-                        g.intf2link.put(tempStrings.get(2) + ":" + tempStrings.get(3),tempLink);
+                        this.links.add(tempLink);
+                        this.intf2link.put(tempStrings.get(0) + ":" + tempStrings.get(1),tempLink);
+                        this.intf2link.put(tempStrings.get(2) + ":" + tempStrings.get(3),tempLink);
 
-                        if (g.sw2link.get(tempStrings.get(0)) == null) {
+                        if (this.sw2link.get(tempStrings.get(0)) == null) {
                             Map<String, Link> temp = new HashMap<String, Link>();
                             temp.put(tempStrings.get(2), tempLink);
-                            g.sw2link.put(tempStrings.get(0), temp);
+                            this.sw2link.put(tempStrings.get(0), temp);
                         } else {
-                            g.sw2link.get(tempStrings.get(0)).put(tempStrings.get(2), tempLink);
+                            this.sw2link.get(tempStrings.get(0)).put(tempStrings.get(2), tempLink);
                         }
 
-                        if (g.sw2link.get(tempStrings.get(2)) == null) {
+                        if (this.sw2link.get(tempStrings.get(2)) == null) {
                             Map<String, Link> temp = new HashMap<String, Link>();
                             temp.put(tempStrings.get(0), tempLink);
-                            g.sw2link.put(tempStrings.get(2), temp);
+                            this.sw2link.put(tempStrings.get(2), temp);
                         } else {
-                            g.sw2link.get(tempStrings.get(2)).put(tempStrings.get(0), tempLink);
+                            this.sw2link.get(tempStrings.get(2)).put(tempStrings.get(0), tempLink);
                         }
 
                     } else if (counter == 6) {
                         // SW1, INTF1, PORT1, SW2, INTF2, PORT2
                         tempLink = new Link(tempStrings.get(0), tempStrings.get(1), tempStrings.get(3), tempStrings.get(4), Integer.valueOf(tempStrings.get(2)), Integer.valueOf(tempStrings.get(5)));
                         
-                        g.links.add(tempLink);
-                        g.intf2link.put(tempStrings.get(0) + ":" + tempStrings.get(1),tempLink);
-                        g.intf2link.put(tempStrings.get(3) + ":" + tempStrings.get(4),tempLink);
+                        this.links.add(tempLink);
+                        this.intf2link.put(tempStrings.get(0) + ":" + tempStrings.get(1),tempLink);
+                        this.intf2link.put(tempStrings.get(3) + ":" + tempStrings.get(4),tempLink);
 
-                        if (g.sw2link.get(tempStrings.get(0)) == null) {
+                        if (this.sw2link.get(tempStrings.get(0)) == null) {
                             Map<String, Link> temp = new HashMap<String, Link>();
                             temp.put(tempStrings.get(3), tempLink);
-                            g.sw2link.put(tempStrings.get(0), temp);
+                            this.sw2link.put(tempStrings.get(0), temp);
                         } else {
-                            g.sw2link.get(tempStrings.get(0)).put(tempStrings.get(3), tempLink);
+                            this.sw2link.get(tempStrings.get(0)).put(tempStrings.get(3), tempLink);
                         }
 
-                        if (g.sw2link.get(tempStrings.get(3)) == null) {
+                        if (this.sw2link.get(tempStrings.get(3)) == null) {
                             Map<String, Link> temp = new HashMap<String, Link>();
                             temp.put(tempStrings.get(0), tempLink);
-                            g.sw2link.put(tempStrings.get(3), temp);
+                            this.sw2link.put(tempStrings.get(3), temp);
                         } else {
-                            g.sw2link.get(tempStrings.get(3)).put(tempStrings.get(0), tempLink);
+                            this.sw2link.get(tempStrings.get(3)).put(tempStrings.get(0), tempLink);
                         }
                     }
                 }
             }   
         }
 
-        for (String name: g.hosts.keySet()) {
-            if (!g.ctrls.contains(name)) {
-                g.networkGraph.addNode(name);
+        for (String name: this.hosts.keySet()) {
+            if (!this.ctrls.contains(name)) {
+                this.networkGraph.addNode(name);
             }
         }
 
-        g.networkGraph.printGraph();
-
-        return g;
+        this.networkGraph.printGraph();
     }
-}
- 
-public class MACTracker implements IFloodlightModule, IOFSwitchListener {
-    protected Graph g;
-    protected IOFSwitchService switchService;
-    protected static Logger logger;
  
     @Override
     public Collection<Class<? extends IFloodlightService>> getModuleServices() {
@@ -413,7 +395,14 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener {
 
         switchService = context.getServiceImpl(IOFSwitchService.class);
         logger = LoggerFactory.getLogger(MACTracker.class);
-        g = new Graph(); 
+        
+        switches = new HashMap<String, IPv4Address>();
+        ctrls = new ArrayList<String>();
+        links = new ArrayList<Link>();
+        hosts = new HashMap<String, IPv4Address>();
+        intf2link = new HashMap<String, Link>();
+        sw2link = new HashMap<String, Map<String, Link>>();
+        networkGraph = new NetworkX();
     }
 
     @Override
