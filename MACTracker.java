@@ -166,7 +166,7 @@ class NetworkX {
         visited.put(u, true);
         path.add(u);
 
-        if (u == d) {
+        if (u.equals(d)) {
             List<String> newList = new ArrayList<String>();
 
             for (String str : path) {
@@ -197,7 +197,7 @@ class Link {
     String sw2;
     String intf2;
     int port2;
-    int state2;
+    int state2; //TODO: Change State from an Integer.
 
     public Link(String sw1, String intf1, String sw2, String intf2, int port1, int port2) {
         this.sw1 = sw1;
@@ -206,6 +206,8 @@ class Link {
         this.intf2 = intf2;
         this.port1 = port1;
         this.port2 = port2;
+        this.state1 = 1;
+        this.state2 = 1;
 
         if (this.sw1.charAt(0) == 'h') {
             this.state1 = 512; // represents OFPPS_STP_FORWARD [POX].
@@ -227,6 +229,10 @@ class Link {
         this.port2 = -1;
         this.state1 = 1; // 1 represents link down. of.OFPPS_LINK_DOWN in POX.
         this.state2 = 1; // 1 represents link down. of.OFPPS_LINK_DOWN in POX.
+    }
+
+    public String toString() {
+        return "Switch SW1: " + sw1 + ", Interface-1: " + intf1 + ", Switch SW2: " + sw2 + ", Interface-2: " + intf2 + ", Port-1: " + port1 + ", Port-2: " + port2 + ", State-1: " + state1 + ", State-2: " + state2;
     }
 }
  
@@ -427,13 +433,81 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDi
     public void switchPortChanged(DatapathId switchId,
                                   OFPortDesc port,
                                   PortChangeType type) {
+        if (type == PortChangeType.DOWN) {
+            String swID = switchID_to_string(switchId);
+            Link lnk = intf2link.get(swID + ':' + port.getName());
+
+            String sw1 = lnk.sw1;
+            String sw2 = lnk.sw2;
+       
+            if (sw1.equals(swID)) {
+                lnk.state1 = 1;
+
+                if (lnk.state2 == 1) {
+                    return;
+                } else {
+                    networkGraph.removeEdge(sw1, sw2);
+                    // TODO: Update Flow Tables
+                }
+            } else if (sw2.equals(swID)) {
+                lnk.state2 = 1;
+
+                if (lnk.state1 == 1) {
+                    return;
+                } else {
+                    networkGraph.removeEdge(sw1, sw2);
+                    // TODO: Update Flow Tables
+                }
+            }
+        }
     }
 
     @Override
     public void linkDiscoveryUpdate(List<LDUpdate> updateList) {
-        // for (LDUpdate u : updateList) {
-        //     logger.info(u.getOperation().toString());
-        // }
+        // logger.info("------------ UPDATES UPDATES ---------------------");
+        for (LDUpdate u : updateList) {
+            logger.info("getOperation(): "+ u.getOperation().toString());
+            if (u.getOperation() == UpdateOperation.PORT_UP) {
+                String swID = switchID_to_string(u.getSrc());
+                String interfaceName = swToConn.get(swID).getPort(u.getSrcPort()).getName();
+                Link lnk = intf2link.get(swID + ':' + interfaceName);
+
+                if (lnk == null) continue;
+                if (lnk.sw1.equals(swID)) {
+                    lnk.port1 = u.getSrcPort().getPortNumber();
+                } else if (lnk.sw2.equals(swID)) {
+                    lnk.port2 = u.getSrcPort().getPortNumber();
+                } else {
+                    logger.info("WHY IS IT COMING HERE?");
+                }
+
+                // TODO: Old State Variable
+                // TODO: lnk is None?
+
+                String sw1 = lnk.sw1;
+                String sw2 = lnk.sw2;
+
+                if (sw1.equals(swID)) {
+                    lnk.state1 = 512;
+
+                    if (lnk.state2 == 512) {
+                        networkGraph.addEdge(sw1, sw2);
+                        // TODO: Update Flow Tables
+                    } else {
+                        logger.info("WAIT FOR OTHER PORT.");
+                    }
+                } else if (sw2.equals(swID)) {
+                    lnk.state2 = 512;
+
+                    if (lnk.state1 == 512) {
+                        networkGraph.addEdge(sw1, sw2);
+                        // TODO: Update Flow Tables;
+                    } else {
+                        logger.info("WAIT FOR OTHER PORT.");
+                    }
+                }
+            }
+        }
     }
 
     @Override
@@ -456,8 +530,8 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDi
         swToConn.remove(swName);
 
         for (Link lnk : sw2link.get(swName).values()) {
-            if (swName == lnk.sw1) lnk.state1 = 1;
-            if (swName == lnk.sw2) lnk.state2 = 1; // TODO: REPLACE THESE NUMBERS WITH FLOODLLIGHT CONSTS.
+            if (swName.equals(lnk.sw1)) lnk.state1 = 1;
+            if (swName.equals(lnk.sw2)) lnk.state2 = 1; // TODO: REPLACE THESE NUMBERS WITH FLOODLLIGHT CONSTS.
         }
         // TODO: Update Flow Tables.
     }
@@ -489,7 +563,8 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDi
         linkService.addListener(this);
 
         try {
-            String fmJson = "{\"switches\": {\"s018\": \"10.0.18.1\", \"s019\": \"10.0.19.1\", \"s012\": \"10.0.12.1\", \"s013\": \"10.0.13.1\", \"s010\": \"10.0.10.1\", \"s011\": \"10.0.11.1\", \"s016\": \"10.0.16.1\", \"s017\": \"10.0.17.1\", \"s014\": \"10.0.14.1\", \"s015\": \"10.0.15.1\", \"s005\": \"10.0.5.1\", \"s004\": \"10.0.4.1\", \"s007\": \"10.0.7.1\", \"s006\": \"10.0.6.1\", \"s001\": \"10.0.1.1\", \"s000\": \"10.0.0.1\", \"s003\": \"10.0.3.1\", \"s002\": \"10.0.2.1\", \"s009\": \"10.0.9.1\", \"s008\": \"10.0.8.1\"}, \"hosts\": {\"h014\": \"10.1.14.1\", \"h008\": \"10.1.8.1\", \"h009\": \"10.1.9.1\", \"h004\": \"10.1.4.1\", \"h005\": \"10.1.5.1\", \"h006\": \"10.1.6.1\", \"h007\": \"10.1.7.1\", \"h000\": \"10.1.0.1\", \"h001\": \"10.1.1.1\", \"h002\": \"10.1.2.1\", \"h003\": \"10.1.3.1\", \"h011\": \"10.1.11.1\", \"h012\": \"10.1.12.1\", \"h013\": \"10.1.13.1\", \"h010\": \"10.1.10.1\", \"h015\": \"10.1.15.1\"}, \"links\": [[\"s011\", \"s011-eth0\", 1, \"s002\", \"s002-eth3\", 4], [\"s005\", \"s005-eth3\", 4, \"s013\", \"s013-eth1\", 2], [\"s007\", \"s007-eth1\", 2, \"s003\", \"s003-eth1\", 2], [\"s009\", \"s009-eth0\", 1, \"s002\", \"s002-eth2\", 3], [\"s006\", \"s006-eth0\", 1, \"s000\", \"s000-eth1\", 2], [\"s010\", \"s010-eth0\", 1, \"s000\", \"s000-eth3\", 4], [\"s017\", \"s017-eth2\", 3, \"h010\", \"h010-eth0\", 1], [\"s011\", \"s011-eth3\", 4, \"s019\", \"s019-eth1\", 2], [\"s005\", \"s005-eth1\", 2, \"s003\", \"s003-eth0\", 1], [\"s007\", \"s007-eth3\", 4, \"s015\", \"s015-eth1\", 2], [\"s011\", \"s011-eth1\", 2, \"s003\", \"s003-eth3\", 4], [\"s008\", \"s008-eth2\", 3, \"s016\", \"s016-eth0\", 1], [\"s008\", \"s008-eth3\", 4, \"s017\", \"s017-eth0\", 1], [\"s008\", \"s008-eth0\", 1, \"s000\", \"s000-eth2\", 3], [\"s010\", \"s010-eth1\", 2, \"s001\", \"s001-eth3\", 4], [\"s004\", \"s004-eth0\", 1, \"s000\", \"s000-eth0\", 1], [\"s015\", \"s015-eth2\", 3, \"h006\", \"h006-eth0\", 1], [\"s010\", \"s010-eth3\", 4, \"s019\", \"s019-eth0\", 1], [\"s009\", \"s009-eth3\", 4, \"s017\", \"s017-eth1\", 2], [\"s014\", \"s014-eth3\", 4, \"h005\", \"h005-eth0\", 1], [\"s006\", \"s006-eth3\", 4, \"s015\", \"s015-eth0\", 1], [\"s005\", \"s005-eth2\", 3, \"s012\", \"s012-eth1\", 2], [\"s005\", \"s005-eth0\", 1, \"s002\", \"s002-eth0\", 1], [\"s014\", \"s014-eth2\", 3, \"h004\", \"h004-eth0\", 1], [\"s011\", \"s011-eth2\", 3, \"s018\", \"s018-eth1\", 2], [\"s013\", \"s013-eth2\", 3, \"h002\", \"h002-eth0\", 1], [\"s004\", \"s004-eth2\", 3, \"s012\", \"s012-eth0\", 1], [\"s016\", \"s016-eth3\", 4, \"h009\", \"h009-eth0\", 1], [\"s018\", \"s018-eth3\", 4, \"h013\", \"h013-eth0\", 1], [\"s008\", \"s008-eth1\", 2, \"s001\", \"s001-eth2\", 3], [\"s006\", \"s006-eth2\", 3, \"s014\", \"s014-eth0\", 1], [\"s009\", \"s009-eth1\", 2, \"s003\", \"s003-eth2\", 3], [\"s019\", \"s019-eth2\", 3, \"h014\", \"h014-eth0\", 1], [\"s004\", \"s004-eth1\", 2, \"s001\", \"s001-eth0\", 1], [\"s006\", \"s006-eth1\", 2, \"s001\", \"s001-eth1\", 2], [\"s010\", \"s010-eth2\", 3, \"s018\", \"s018-eth0\", 1], [\"s009\", \"s009-eth2\", 3, \"s016\", \"s016-eth1\", 2], [\"s012\", \"s012-eth2\", 3, \"h000\", \"h000-eth0\", 1], [\"s012\", \"s012-eth3\", 4, \"h001\", \"h001-eth0\", 1], [\"s018\", \"s018-eth2\", 3, \"h012\", \"h012-eth0\", 1], [\"s007\", \"s007-eth0\", 1, \"s002\", \"s002-eth1\", 2], [\"s004\", \"s004-eth3\", 4, \"s013\", \"s013-eth0\", 1], [\"s007\", \"s007-eth2\", 3, \"s014\", \"s014-eth1\", 2], [\"s017\", \"s017-eth3\", 4, \"h011\", \"h011-eth0\", 1]], \"ctrls\": [\"h003\", \"h007\", \"h008\", \"h015\"]}";
+            // String fmJson = "{\"switches\": {\"s018\": \"10.0.18.1\", \"s019\": \"10.0.19.1\", \"s012\": \"10.0.12.1\", \"s013\": \"10.0.13.1\", \"s010\": \"10.0.10.1\", \"s011\": \"10.0.11.1\", \"s016\": \"10.0.16.1\", \"s017\": \"10.0.17.1\", \"s014\": \"10.0.14.1\", \"s015\": \"10.0.15.1\", \"s005\": \"10.0.5.1\", \"s004\": \"10.0.4.1\", \"s007\": \"10.0.7.1\", \"s006\": \"10.0.6.1\", \"s001\": \"10.0.1.1\", \"s000\": \"10.0.0.1\", \"s003\": \"10.0.3.1\", \"s002\": \"10.0.2.1\", \"s009\": \"10.0.9.1\", \"s008\": \"10.0.8.1\"}, \"hosts\": {\"h014\": \"10.1.14.1\", \"h008\": \"10.1.8.1\", \"h009\": \"10.1.9.1\", \"h004\": \"10.1.4.1\", \"h005\": \"10.1.5.1\", \"h006\": \"10.1.6.1\", \"h007\": \"10.1.7.1\", \"h000\": \"10.1.0.1\", \"h001\": \"10.1.1.1\", \"h002\": \"10.1.2.1\", \"h003\": \"10.1.3.1\", \"h011\": \"10.1.11.1\", \"h012\": \"10.1.12.1\", \"h013\": \"10.1.13.1\", \"h010\": \"10.1.10.1\", \"h015\": \"10.1.15.1\"}, \"links\": [[\"s011\", \"s011-eth0\", 1, \"s002\", \"s002-eth3\", 4], [\"s005\", \"s005-eth3\", 4, \"s013\", \"s013-eth1\", 2], [\"s007\", \"s007-eth1\", 2, \"s003\", \"s003-eth1\", 2], [\"s009\", \"s009-eth0\", 1, \"s002\", \"s002-eth2\", 3], [\"s006\", \"s006-eth0\", 1, \"s000\", \"s000-eth1\", 2], [\"s010\", \"s010-eth0\", 1, \"s000\", \"s000-eth3\", 4], [\"s017\", \"s017-eth2\", 3, \"h010\", \"h010-eth0\", 1], [\"s011\", \"s011-eth3\", 4, \"s019\", \"s019-eth1\", 2], [\"s005\", \"s005-eth1\", 2, \"s003\", \"s003-eth0\", 1], [\"s007\", \"s007-eth3\", 4, \"s015\", \"s015-eth1\", 2], [\"s011\", \"s011-eth1\", 2, \"s003\", \"s003-eth3\", 4], [\"s008\", \"s008-eth2\", 3, \"s016\", \"s016-eth0\", 1], [\"s008\", \"s008-eth3\", 4, \"s017\", \"s017-eth0\", 1], [\"s008\", \"s008-eth0\", 1, \"s000\", \"s000-eth2\", 3], [\"s010\", \"s010-eth1\", 2, \"s001\", \"s001-eth3\", 4], [\"s004\", \"s004-eth0\", 1, \"s000\", \"s000-eth0\", 1], [\"s015\", \"s015-eth2\", 3, \"h006\", \"h006-eth0\", 1], [\"s010\", \"s010-eth3\", 4, \"s019\", \"s019-eth0\", 1], [\"s009\", \"s009-eth3\", 4, \"s017\", \"s017-eth1\", 2], [\"s014\", \"s014-eth3\", 4, \"h005\", \"h005-eth0\", 1], [\"s006\", \"s006-eth3\", 4, \"s015\", \"s015-eth0\", 1], [\"s005\", \"s005-eth2\", 3, \"s012\", \"s012-eth1\", 2], [\"s005\", \"s005-eth0\", 1, \"s002\", \"s002-eth0\", 1], [\"s014\", \"s014-eth2\", 3, \"h004\", \"h004-eth0\", 1], [\"s011\", \"s011-eth2\", 3, \"s018\", \"s018-eth1\", 2], [\"s013\", \"s013-eth2\", 3, \"h002\", \"h002-eth0\", 1], [\"s004\", \"s004-eth2\", 3, \"s012\", \"s012-eth0\", 1], [\"s016\", \"s016-eth3\", 4, \"h009\", \"h009-eth0\", 1], [\"s018\", \"s018-eth3\", 4, \"h013\", \"h013-eth0\", 1], [\"s008\", \"s008-eth1\", 2, \"s001\", \"s001-eth2\", 3], [\"s006\", \"s006-eth2\", 3, \"s014\", \"s014-eth0\", 1], [\"s009\", \"s009-eth1\", 2, \"s003\", \"s003-eth2\", 3], [\"s019\", \"s019-eth2\", 3, \"h014\", \"h014-eth0\", 1], [\"s004\", \"s004-eth1\", 2, \"s001\", \"s001-eth0\", 1], [\"s006\", \"s006-eth1\", 2, \"s001\", \"s001-eth1\", 2], [\"s010\", \"s010-eth2\", 3, \"s018\", \"s018-eth0\", 1], [\"s009\", \"s009-eth2\", 3, \"s016\", \"s016-eth1\", 2], [\"s012\", \"s012-eth2\", 3, \"h000\", \"h000-eth0\", 1], [\"s012\", \"s012-eth3\", 4, \"h001\", \"h001-eth0\", 1], [\"s018\", \"s018-eth2\", 3, \"h012\", \"h012-eth0\", 1], [\"s007\", \"s007-eth0\", 1, \"s002\", \"s002-eth1\", 2], [\"s004\", \"s004-eth3\", 4, \"s013\", \"s013-eth0\", 1], [\"s007\", \"s007-eth2\", 3, \"s014\", \"s014-eth1\", 2], [\"s017\", \"s017-eth3\", 4, \"h011\", \"h011-eth0\", 1]], \"ctrls\": [\"h003\", \"h007\", \"h008\", \"h015\"]}";
+            String fmJson = "{\"switches\": {\"s004\": \"10.0.1.1\",\"s002\": \"10.0.0.1\",\"s003\": \"10.0.3.1\",\"s001\": \"10.0.2.1\"},\"hosts\": {\"h004\": \"10.1.4.1\",\"h005\": \"10.1.5.1\",\"h006\": \"10.1.6.1\",\"h007\": \"10.1.7.1\",\"h000\": \"10.1.0.1\",\"h001\": \"10.1.1.1\",\"h002\": \"10.1.2.1\",\"h003\": \"10.1.3.1\"},\"links\": [[\"s001\",\"s001-eth1\",1,\"s002\",\"s002-eth1\",1],[\"s001\",\"s001-eth2\",2,\"s003\",\"s003-eth1\",1],[\"s001\",\"s001-eth3\",3,\"s004\",\"s004-eth1\",1],[\"s002\",\"s002-eth2\",2,\"s003\",\"s003-eth2\",2],[\"s002\",\"s002-eth3\",3,\"s004\",\"s004-eth2\",2],[\"s003\",\"s003-eth3\",3,\"s003\",\"s004-eth3\",3],[\"s001\",\"s001-eth4\",4,\"h000\",\"h000-eth0\",1],[\"s001\",\"s001-eth5\",5,\"h001\",\"h001-eth0\",1],[\"s002\",\"s002-eth4\",4,\"h002\",\"h002-eth0\",1],[\"s002\",\"s002-eth5\",5,\"h003\",\"h003-eth0\",1],[\"s003\",\"s003-eth4\",4,\"h004\",\"h004-eth0\",1],[\"s003\",\"s003-eth5\",5,\"h005\",\"h005-eth0\",1],[\"s004\",\"s004-eth4\",4,\"h006\",\"h006-eth0\",1],[\"s004\",\"s004-eth5\",5,\"h007\",\"h007-eth0\",1]],\"ctrls\": [\"h003\",\"h007\"]}";
             loadTopology(fmJson);    
         } catch (IOException e) {
             logger.info("FAILED");
