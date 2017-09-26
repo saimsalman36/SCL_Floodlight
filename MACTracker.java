@@ -263,6 +263,8 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDi
     protected static Map<String, IPv4Address> switches;
     protected static List<String> ctrls;
     protected static List<Link> links;
+    protected static Map<String, Map<String, Map<String, Link>>> sw_tables;
+    protected static Map<String, Map<String, Map<String, String>>> sw_tables_status;
     protected static Map<String, IPv4Address> hosts;
     protected static Map<String, Link> intf2link;
     protected static Map<String, Map<String, Link>> sw2link;
@@ -436,6 +438,8 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDi
         sw2link = new HashMap<String, Map<String, Link>>();
         networkGraph = new NetworkX();
         swToConn = new HashMap<String, IOFSwitch>();
+        sw_tables = new HashMap<String, Map<String, Map<String, Link>>>();
+        sw_tables_status = new HashMap<String, Map<String, Map<String, String>>>();
     }
 
     public String switchID_to_string(DatapathId switchId) {
@@ -585,17 +589,112 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDi
     }
 
     public void calShortestRoute() {
+        Integer current = 0;
+        //TODO: Map -> That contains modified updates and deleted updates.
+
         for (String host1 : this.hosts.keySet()) {
             for (String host2 : this.hosts.keySet()) {
                 if (host1.equals(host2)) continue;
-
                 List<List<String>> paths = this.networkGraph.printAllPaths(host1, host2);
+                if (paths.size() == 0) continue;
 
+                List<String> path = paths.get(current % paths.size());
+
+                for (int i = 1; i < path.size() - 1; i++) {
+                    String a = path.get(i);
+                    String b = path.get(i + 1);
+
+                    Link lnk = this.sw2link.get(a).get(b);
+
+                    if (this.sw_tables.get(a) == null) {
+                        Map<String, Link> temp = new HashMap<String, Link>();
+                        temp.put(host2,lnk);
+
+                        Map<String, String> statusTemp = new HashMap<String, String>();
+                        statusTemp.put(host2,'updated');
+
+                        Map<String, Map<String, Link>> temp2 = new HashMap<String, Map<String, Link>>();
+                        Map<String, Map<String, String>> statusTemp2 = new HashMap<String, Map<String, String>>();
+                        statusTemp2.put(host1,statusTemp);
+                        temp2.put(host1, temp);
+
+                        this.sw_tables_status.put(a,temp2);
+                        this.sw_tables.put(a, temp2);
+                    } else if (this.sw_tables.get(a) != null) {
+                        Map<String, Map<String, Link>> temp = this.sw_tables.get(host1);
+
+                        if (temp.get(host1) == null) {
+                            Map<String, Link> temp2 = new HashMap<String, Link>();
+                            temp2.put(host2,lnk);
+                            temp.put(host1, temp2);
+                        } else if (temp.get(host1) != null) {
+                            Map<String, Link> temp2 = temp.get(host1);
+
+                            if (temp2.get(host2) == null) {
+                                temp2.put(host2,lnk);
+                            } else if (temp2.get(host2) != null) {
+                                this.sw_tables_status.get(a).get(host1).get(host2) = 'checked';
+                            }
+                        }
+                    }
+
+
+                }
 
             }
         }
 
     }
+
+    // def _calculate_shortest_route(self): # Understood
+    //     # log.debug("calculate shortest path routing...")
+    //     # log.debug("Before: ------------------------------------------")
+    //     # log.debug(self.sw_tables)
+    //     # log.debug(self.sw_tables_status)
+    //     # log.debug("Before: ------------------------------------------")
+    //     log.debug("edges, num %d: %s", len(self.graph.edges()), json.dumps(self.graph.edges()))
+    //     updates = {'modify': defaultdict(lambda: []), 'delete' : defaultdict(lambda: [])}
+    //     current = 0
+    //     for host1 in self.hosts:
+    //         for host2 in self.hosts:
+    //             if host1 is host2:
+    //                 continue
+    //             try:
+    //                 paths = list(nx.all_shortest_paths(self.graph, host1, host2, 'weight'))
+    //             except nx.exception.NetworkXNoPath:
+    //                 continue
+    //             path = paths[current % len(paths)]
+    //             # put hostpaths on all path candidates equally
+    //             current += 1
+    //             log.debug('calculated path: %s' % json.dumps(path))
+    //             path = zip(path, path[1:]) # Saim: Genious but simplistic!
+    //             for (a, b) in path[1:]:
+    //                 link = self.sw2link[a][b]
+    //                 if self.sw_tables[a][host1][host2] != link:
+    //                     self.sw_tables[a][host1][host2] = link
+    //                     updates['modify'][a].append((host1, host2, link))
+    //                     self.sw_tables_status[a][host1][host2] = 'updated'
+    //                 else:
+    //                     self.sw_tables_status[a][host1][host2] = 'checked'
+    //     for sw in self.sw_tables_status.keys():
+    //         for host1 in self.sw_tables_status[sw].keys():
+    //             for host2 in self.sw_tables_status[sw][host1].keys():
+    //                 if self.sw_tables_status[sw][host1][host2] is not 'updated' and\
+    //                    self.sw_tables_status[sw][host1][host2] is not 'checked':
+    //                     updates['delete'][sw].append((
+    //                         host1, host2, self.sw_tables[sw][host1][host2]))
+    //                     del self.sw_tables[sw][host1][host2]
+    //                     del self.sw_tables_status[sw][host1][host2]
+    //                 else:
+    //                     # log.debug("SAIM: Does the code ever come here?")
+    //                     # log.debug(self.sw_tables_status[sw][host1][host2])
+    //                     self.sw_tables_status[sw][host1][host2] = 'to_be_deleted'
+    //     # log.debug("After: ------------------------------------------")
+    //     # log.debug(self.sw_tables)
+    //     # log.debug(self.sw_tables_status)
+    //     # log.debug("SAIM: " + updates)
+    //     # log.debug("After: ------------------------------------------")
+    //     return updates
 
     @Override
     public void switchRemoved(DatapathId switchId) {
