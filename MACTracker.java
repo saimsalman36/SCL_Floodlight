@@ -584,6 +584,19 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDi
         sw.write(flowAdd);
     }
 
+    public void calShortestRoute() {
+        for (String host1 : this.hosts.keySet()) {
+            for (String host2 : this.hosts.keySet()) {
+                if (host1.equals(host2)) continue;
+
+                List<List<String>> paths = this.networkGraph.printAllPaths(host1, host2);
+
+
+            }
+        }
+
+    }
+
     @Override
     public void switchRemoved(DatapathId switchId) {
         logger.info("Switch down: " + switchID_to_string(switchId));
