@@ -79,6 +79,17 @@ import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TableId;
 
+class Triples {
+    String host1;
+    String host2;
+    Link lnk;
+
+    public Triples(String host1, String host2, Link lnk) {
+        this.host1 = host1;
+        this.host2 = host2;
+        this.lnk = lnk;
+    }
+}
 
 class NetworkX {
     Map<String, List<String>> graph;
@@ -200,9 +211,11 @@ class NetworkX {
         } else {
             List<String> temp = this.graph.get(u);
 
-            for (int i = 0; i < temp.size(); i++) {
-                if (visited.get(temp.get(i)) == false) {
-                    printAllPaths_(temp.get(i), d, visited, path, res);
+            if (temp != null) {
+                for (int i = 0; i < temp.size(); i++) {
+                    if (visited.get(temp.get(i)) == false) {
+                        printAllPaths_(temp.get(i), d, visited, path, res);
+                    }
                 }
             }
         }
@@ -521,6 +534,7 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDi
 
                     if (lnk.state2 == 512) {
                         this.networkGraph.addEdge(sw1, sw2);
+                        calShortestRoute();
                         // TODO: Update Flow Tables
                     } else {
                         logger.info("WAIT FOR OTHER PORT.");
@@ -530,6 +544,7 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDi
 
                     if (lnk.state1 == 512) {
                         this.networkGraph.addEdge(sw1, sw2);
+                        calShortestRoute();
                         // TODO: Update Flow Tables;
                     } else {
                         logger.info("WAIT FOR OTHER PORT.");
@@ -590,6 +605,13 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDi
 
     public void calShortestRoute() {
         Integer current = 0;
+        
+        Map<String, List<Triples>> tempMap = new HashMap<String, List<Triples>>();
+        Map<String, List<Triples>> tempMap_ = new HashMap<String, List<Triples>>();
+        
+        Map<String, Map<String, List<Triples>>> updates = new HashMap<String, Map<String, List<Triples>>>();
+        updates.put("modify", tempMap_);
+        updates.put("delete", tempMap);
         //TODO: Map -> That contains modified updates and deleted updates.
 
         for (String host1 : this.hosts.keySet()) {
@@ -605,44 +627,61 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDi
                     String b = path.get(i + 1);
 
                     Link lnk = this.sw2link.get(a).get(b);
+                    Triples tempTriple = new Triples(host1, host2, lnk);
+                    boolean notChecked = true;
 
                     if (this.sw_tables.get(a) == null) {
                         Map<String, Link> temp = new HashMap<String, Link>();
                         temp.put(host2,lnk);
 
                         Map<String, String> statusTemp = new HashMap<String, String>();
-                        statusTemp.put(host2,'updated');
+                        statusTemp.put(host2,"updated");
 
                         Map<String, Map<String, Link>> temp2 = new HashMap<String, Map<String, Link>>();
                         Map<String, Map<String, String>> statusTemp2 = new HashMap<String, Map<String, String>>();
                         statusTemp2.put(host1,statusTemp);
                         temp2.put(host1, temp);
 
-                        this.sw_tables_status.put(a,temp2);
+                        this.sw_tables_status.put(a,statusTemp2);
                         this.sw_tables.put(a, temp2);
                     } else if (this.sw_tables.get(a) != null) {
-                        Map<String, Map<String, Link>> temp = this.sw_tables.get(host1);
+                        Map<String, Map<String, Link>> temp = this.sw_tables.get(a);
+                        Map<String, Map<String, String>> statusTemp = this.sw_tables_status.get(a);
 
                         if (temp.get(host1) == null) {
                             Map<String, Link> temp2 = new HashMap<String, Link>();
+                            Map<String, String> statusTemp2 = new HashMap<String, String>();
+
                             temp2.put(host2,lnk);
+                            statusTemp2.put(host2, "updated");
+
                             temp.put(host1, temp2);
+                            statusTemp.put(host1, statusTemp2);
                         } else if (temp.get(host1) != null) {
                             Map<String, Link> temp2 = temp.get(host1);
+                            Map<String, String> statusTemp2 = statusTemp.get(host1);
 
                             if (temp2.get(host2) == null) {
                                 temp2.put(host2,lnk);
+                                statusTemp2.put(host2, "updated");
                             } else if (temp2.get(host2) != null) {
-                                this.sw_tables_status.get(a).get(host1).get(host2) = 'checked';
+                                this.sw_tables_status.get(a).get(host1).put(host2, "checked");
+                                notChecked = true;
                             }
                         }
                     }
 
-
+                    if (notChecked == false) {
+                        Map<String, List<Triples>> tMap = updates.get("modify");
+                        tMap.get(a).add(tempTriple);
+                    }
                 }
 
             }
         }
+
+        logger.info("START OF MAP");
+        logger.info("PRINTING MAP");
 
     }
 
@@ -673,14 +712,14 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDi
     //                 if self.sw_tables[a][host1][host2] != link:
     //                     self.sw_tables[a][host1][host2] = link
     //                     updates['modify'][a].append((host1, host2, link))
-    //                     self.sw_tables_status[a][host1][host2] = 'updated'
+    //                     self.sw_tables_status[a][host1][host2] = "updated"
     //                 else:
-    //                     self.sw_tables_status[a][host1][host2] = 'checked'
+    //                     self.sw_tables_status[a][host1][host2] = "checked"
     //     for sw in self.sw_tables_status.keys():
     //         for host1 in self.sw_tables_status[sw].keys():
     //             for host2 in self.sw_tables_status[sw][host1].keys():
-    //                 if self.sw_tables_status[sw][host1][host2] is not 'updated' and\
-    //                    self.sw_tables_status[sw][host1][host2] is not 'checked':
+    //                 if self.sw_tables_status[sw][host1][host2] is not "updated" and\
+    //                    self.sw_tables_status[sw][host1][host2] is not "checked":
     //                     updates['delete'][sw].append((
     //                         host1, host2, self.sw_tables[sw][host1][host2]))
     //                     del self.sw_tables[sw][host1][host2]
