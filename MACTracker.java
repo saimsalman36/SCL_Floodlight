@@ -89,6 +89,10 @@ class Triples {
         this.host2 = host2;
         this.lnk = lnk;
     }
+
+    public String toString() {
+        return "Host-1: " + this.host1 + ", Host-2: " + this.host2;
+    }
 }
 
 class NetworkX {
@@ -603,7 +607,7 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDi
         sw.write(flowAdd);
     }
 
-    public void calShortestRoute() {
+    public Map<String, Map<String, List<Triples>>> calShortestRoute() {
         Integer current = 0;
         
         Map<String, List<Triples>> tempMap = new HashMap<String, List<Triples>>();
@@ -676,64 +680,36 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDi
                         tMap.get(a).add(tempTriple);
                     }
                 }
+            }
+        }
 
+        for (String sw : this.sw_tables_status.keySet()) {
+           Map<String, Map<String, String>> temp = this.sw_tables_status.get(sw);
+            
+            for (String host1 : temp.keySet()) {
+                Map<String, String> temp_ = temp.get(host1);
+                
+                for (String host2 : temp_.keySet()) {
+                    String res = temp_.get(host2);
+
+                    if ((!res.equals("updated")) && (!res.equals("checked"))) {
+                        Map<String, List<Triples>> tMap = updates.get("delete");
+                        tMap.get(sw).add(new Triples(host1, host2, this.sw_tables.get(sw).get(host1).get(host2)));
+
+                        this.sw_tables_status.get(sw).get(host1).remove(host2);
+                        this.sw_tables.get(sw).get(host1).remove(host2);
+                    } else {
+                        this.sw_tables_status.get(sw).get(host1).put(host2, "to_be_deleted");
+                    }
+                }    
             }
         }
 
         logger.info("START OF MAP");
+        
         logger.info("PRINTING MAP");
-
+        return updates;
     }
-
-    // def _calculate_shortest_route(self): # Understood
-    //     # log.debug("calculate shortest path routing...")
-    //     # log.debug("Before: ------------------------------------------")
-    //     # log.debug(self.sw_tables)
-    //     # log.debug(self.sw_tables_status)
-    //     # log.debug("Before: ------------------------------------------")
-    //     log.debug("edges, num %d: %s", len(self.graph.edges()), json.dumps(self.graph.edges()))
-    //     updates = {'modify': defaultdict(lambda: []), 'delete' : defaultdict(lambda: [])}
-    //     current = 0
-    //     for host1 in self.hosts:
-    //         for host2 in self.hosts:
-    //             if host1 is host2:
-    //                 continue
-    //             try:
-    //                 paths = list(nx.all_shortest_paths(self.graph, host1, host2, 'weight'))
-    //             except nx.exception.NetworkXNoPath:
-    //                 continue
-    //             path = paths[current % len(paths)]
-    //             # put hostpaths on all path candidates equally
-    //             current += 1
-    //             log.debug('calculated path: %s' % json.dumps(path))
-    //             path = zip(path, path[1:]) # Saim: Genious but simplistic!
-    //             for (a, b) in path[1:]:
-    //                 link = self.sw2link[a][b]
-    //                 if self.sw_tables[a][host1][host2] != link:
-    //                     self.sw_tables[a][host1][host2] = link
-    //                     updates['modify'][a].append((host1, host2, link))
-    //                     self.sw_tables_status[a][host1][host2] = "updated"
-    //                 else:
-    //                     self.sw_tables_status[a][host1][host2] = "checked"
-    //     for sw in self.sw_tables_status.keys():
-    //         for host1 in self.sw_tables_status[sw].keys():
-    //             for host2 in self.sw_tables_status[sw][host1].keys():
-    //                 if self.sw_tables_status[sw][host1][host2] is not "updated" and\
-    //                    self.sw_tables_status[sw][host1][host2] is not "checked":
-    //                     updates['delete'][sw].append((
-    //                         host1, host2, self.sw_tables[sw][host1][host2]))
-    //                     del self.sw_tables[sw][host1][host2]
-    //                     del self.sw_tables_status[sw][host1][host2]
-    //                 else:
-    //                     # log.debug("SAIM: Does the code ever come here?")
-    //                     # log.debug(self.sw_tables_status[sw][host1][host2])
-    //                     self.sw_tables_status[sw][host1][host2] = 'to_be_deleted'
-    //     # log.debug("After: ------------------------------------------")
-    //     # log.debug(self.sw_tables)
-    //     # log.debug(self.sw_tables_status)
-    //     # log.debug("SAIM: " + updates)
-    //     # log.debug("After: ------------------------------------------")
-    //     return updates
 
     @Override
     public void switchRemoved(DatapathId switchId) {
