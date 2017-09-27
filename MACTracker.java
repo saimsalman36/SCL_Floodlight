@@ -612,11 +612,28 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDi
             return;
         }
 
-        Integer total = 0;
-        Integer modify = 0;
-        Integer delete = 0;
-
+        Iterator it = updates.get("modify").entrySet().iterator();
         
+        while (it.hasNext()) {
+            Map.Entry pair = (Map.Entry)it.next();
+            String swName = (String) pair.getKey();
+            
+
+            for (Triples trp : (List <Triples>) pair.getValue()) {
+                // TODO: Update Flow
+            }
+        }
+
+        it = updates.get("delete").entrySet().iterator();
+
+        while (it.hasNext()) {
+            Map.Entry pair = (Map.Entry)it.next();
+            String swName = (String) pair.getKey();
+            
+            for (Triples trp : (List <Triples>) pair.getValue()) {
+                // TODO: Update Flow
+            }
+        }
     }
 
     public Map<String, Map<String, List<Triples>>> calShortestRoute() {
