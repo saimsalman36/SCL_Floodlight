@@ -538,8 +538,7 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDi
 
                     if (lnk.state2 == 512) {
                         this.networkGraph.addEdge(sw1, sw2);
-                        calShortestRoute();
-                        // TODO: Update Flow Tables
+                        updateFlowEntries(calShortestRoute());
                     } else {
                         logger.info("WAIT FOR OTHER PORT.");
                     }
@@ -548,8 +547,7 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDi
 
                     if (lnk.state1 == 512) {
                         this.networkGraph.addEdge(sw1, sw2);
-                        calShortestRoute();
-                        // TODO: Update Flow Tables;
+                        updateFlowEntries(calShortestRoute());
                     } else {
                         logger.info("WAIT FOR OTHER PORT.");
                     }
@@ -631,7 +629,7 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDi
             
 
             for (Triples trp : (List <Triples>) pair.getValue()) {
-                // TODO: Update Flow
+                updateFlowEntry(swName, trp.host1, trp.host2, trp.lnk, "modify");
             }
         }
 
@@ -642,7 +640,7 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDi
             String swName = (String) pair.getKey();
             
             for (Triples trp : (List <Triples>) pair.getValue()) {
-                // TODO: Update Flow
+                updateFlowEntry(swName, trp.host1, trp.host2, trp.lnk, "modify");
             }
         }
     }
