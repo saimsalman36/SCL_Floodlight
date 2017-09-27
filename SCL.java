@@ -1,4 +1,4 @@
-package net.floodlightcontroller.mactracker;
+package net.floodlightcontroller.scl;
  
 import java.util.Collection;
 import java.util.Map;
@@ -276,7 +276,7 @@ class Link {
     }
 }
  
-public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDiscoveryListener {
+public class SCL implements IFloodlightModule, IOFSwitchListener, ILinkDiscoveryListener {
     protected static Map<String, IPv4Address> switches;
     protected static List<String> ctrls;
     protected static List<Link> links;
@@ -445,7 +445,7 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDi
 
         switchService = context.getServiceImpl(IOFSwitchService.class);
         linkService = context.getServiceImpl(ILinkDiscoveryService.class);
-        logger = LoggerFactory.getLogger(MACTracker.class);
+        logger = LoggerFactory.getLogger(SCL.class);
         
         switches = new HashMap<String, IPv4Address>();
         ctrls = new ArrayList<String>();
