@@ -607,6 +607,18 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDi
         sw.write(flowAdd);
     }
 
+    public void updateFlowEntries(Map<String, Map<String, List<Triples>>> updates) {
+        if (updates.get("modify").size() == 0 && updates.get("delete").size() == 0) {
+            return;
+        }
+
+        Integer total = 0;
+        Integer modify = 0;
+        Integer delete = 0;
+
+        
+    }
+
     public Map<String, Map<String, List<Triples>>> calShortestRoute() {
         Integer current = 0;
         
@@ -670,14 +682,18 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDi
                                 statusTemp2.put(host2, "updated");
                             } else if (temp2.get(host2) != null) {
                                 this.sw_tables_status.get(a).get(host1).put(host2, "checked");
-                                notChecked = true;
+                                notChecked = false;
                             }
                         }
                     }
-
-                    if (notChecked == false) {
-                        Map<String, List<Triples>> tMap = updates.get("modify");
-                        tMap.get(a).add(tempTriple);
+                    if (notChecked == true) {
+                        if (updates.get("modify").get(a) == null) {
+                            List<Triples> tmp = new ArrayList<Triples>();
+                            tmp.add(tempTriple);
+                            updates.get("modify").put(a, tmp);
+                        } else {
+                            updates.get("modify").get(a).add(tempTriple);
+                        }
                     }
                 }
             }
@@ -693,8 +709,13 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDi
                     String res = temp_.get(host2);
 
                     if ((!res.equals("updated")) && (!res.equals("checked"))) {
-                        Map<String, List<Triples>> tMap = updates.get("delete");
-                        tMap.get(sw).add(new Triples(host1, host2, this.sw_tables.get(sw).get(host1).get(host2)));
+                        if (updates.get("delete").get(sw) == null) {
+                            List<Triples> tmp = new ArrayList<Triples>();
+                            tmp.add(new Triples(host1, host2, this.sw_tables.get(sw).get(host1).get(host2)));
+                            updates.get("delete").put(sw, tmp);
+                        } else {
+                            updates.get("delete").get(sw).add(new Triples(host1, host2, this.sw_tables.get(sw).get(host1).get(host2)));
+                        }
 
                         this.sw_tables_status.get(sw).get(host1).remove(host2);
                         this.sw_tables.get(sw).get(host1).remove(host2);
@@ -706,8 +727,10 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDi
         }
 
         logger.info("START OF MAP");
-        
-        logger.info("PRINTING MAP");
+        logger.info(Integer.toString(updates.get("modify").size()));
+        logger.info(Integer.toString(sw_tables.size()));
+        logger.info(Integer.toString(sw_tables_status.size()));
+        logger.info("END OF MAP");
         return updates;
     }
 
