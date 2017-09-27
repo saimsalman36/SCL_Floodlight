@@ -563,25 +563,36 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDi
 
     }
 
-    void updateFlowEntry(IOFSwitch sw) {
+    void updateFlowEntry(String switchName, String host1, String host2, Link lnk, String cmd) {
+        IOFSwitch sw = swToConn.get(switchName);
         OFFactory myFactory = sw.getOFFactory();
-        OFPort pNorm = OFPort.NORMAL;
+
+        IPv4Address nwSRC = hosts.get(host1);
+        IPv4Address nwDST = hosts.get(host2);
+        OFPort outPort;
+
+        if (switchName == lnk.sw1) {
+            outPort = OFPort.of(lnk.port1);
+        } else {
+            outPort = OFPort.of(lnk.port2);
+        }
 
         Match myMatch = myFactory.buildMatch()
         .setExact(MatchField.ETH_TYPE, EthType.IPv4)
+        .setExact(MatchField.IPV4_SRC, nwSRC)
+        .setExact(MatchField.IPV4_DST, nwDST)
         .build();
 
         OFInstructions instructions = myFactory.instructions();
         ArrayList<OFAction> actionList = new ArrayList<OFAction>();
         OFActions actions = myFactory.actions();
- 
-        /* Output to a port is also an OFAction, not an OXM. */
+
         OFActionOutput output = actions.buildOutput()
             .setMaxLen(0xFFFFFFFF)
-            .setPort(pNorm)
+            .setPort(outPort)
             .build();
         actionList.add(output);
-         
+
         /* Supply the OFAction list to the OFInstructionApplyActions. */
         OFInstructionApplyActions applyActions = instructions.buildApplyActions()
             .setActions(actionList)
@@ -593,18 +604,18 @@ public class MACTracker implements IFloodlightModule, IOFSwitchListener, ILinkDi
         
         
         //FlowMod
-        OFFlowAdd flowAdd = myFactory.buildFlowAdd()
-                .setBufferId(OFBufferId.NO_BUFFER)
-                // .setHardTimeout(3600)
-                // .setIdleTimeout(10)
-                .setPriority(50000)
-                .setMatch(myMatch)
-                .setInstructions(myInstructionList)
-                .setOutPort(OFPort.of(1))
-                .setTableId(TableId.of(0))
-                .build();
-             
-        sw.write(flowAdd);
+        if (cmd.equals("modify")) {
+            OFFlowAdd flowAdd = myFactory.buildFlowAdd()
+                    .setBufferId(OFBufferId.NO_BUFFER)
+                    .setPriority(50000)
+                    .setMatch(myMatch)
+                    .setInstructions(myInstructionList)
+                    .setOutPort(OFPort.of(1))
+                    .setTableId(TableId.of(0))
+                    .build();
+                 
+            sw.write(flowAdd);
+        }      
     }
 
     public void updateFlowEntries(Map<String, Map<String, List<Triples>>> updates) {
