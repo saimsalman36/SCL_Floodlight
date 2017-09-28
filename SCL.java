@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Map;
 
 import org.projectfloodlight.openflow.types.IPv4Address;
 import org.projectfloodlight.openflow.types.DatapathId;
@@ -402,7 +403,7 @@ public class SCL implements IFloodlightModule, IOFSwitchListener, ILinkDiscovery
 
         for (String name: this.hosts.keySet()) {
             if (!this.ctrls.contains(name)) {
-                logger.info(name);
+                // logger.info(name);
                 this.networkGraph.addNode(name);
             }
         }
@@ -552,6 +553,9 @@ public class SCL implements IFloodlightModule, IOFSwitchListener, ILinkDiscovery
 
     void updateFlowEntry(String switchName, String host1, String host2, Link lnk, String cmd) {
         IOFSwitch sw = swToConn.get(switchName);
+
+        if (sw == null) return;
+
         OFFactory myFactory = sw.getOFFactory();
 
         IPv4Address nwSRC = hosts.get(host1);
