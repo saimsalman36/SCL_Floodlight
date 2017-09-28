@@ -1,84 +1,49 @@
 package net.floodlightcontroller.scl;
- 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Map;
- 
-import org.projectfloodlight.openflow.protocol.OFMessage;
-import org.projectfloodlight.openflow.protocol.OFType;
-import org.projectfloodlight.openflow.types.MacAddress;
- 
-import net.floodlightcontroller.core.FloodlightContext;
-import net.floodlightcontroller.core.IOFMessageListener;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+
+import java.io.IOException;
+
 import net.floodlightcontroller.core.IOFSwitchListener;
 import net.floodlightcontroller.core.IOFSwitch;
 import net.floodlightcontroller.core.module.FloodlightModuleContext;
 import net.floodlightcontroller.core.module.FloodlightModuleException;
 import net.floodlightcontroller.core.module.IFloodlightModule;
 import net.floodlightcontroller.core.module.IFloodlightService;
-
-// Dependencies
-import net.floodlightcontroller.core.IFloodlightProviderService;
-import java.util.ArrayList;
-import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.Set;
-import net.floodlightcontroller.packet.Ethernet;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-
-// Important
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonFactory;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.databind.MappingJsonFactory;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.JsonNode;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.HashMap;
-import org.projectfloodlight.openflow.types.IPv4Address;
-import org.projectfloodlight.openflow.types.DatapathId;
-import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import net.floodlightcontroller.core.PortChangeType;
 import net.floodlightcontroller.core.internal.IOFSwitchService;
-import net.floodlightcontroller.core.internal.IOFSwitchManager;
 
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryListener;
 import net.floodlightcontroller.linkdiscovery.ILinkDiscoveryService;
 
-// import core.projectfloodlight.internal.IOFSwitchManager;
-
-import java.util.Collection;
-import java.util.Map;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Iterator;
 import java.util.HashMap;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 
+import org.projectfloodlight.openflow.types.IPv4Address;
+import org.projectfloodlight.openflow.types.DatapathId;
+import org.projectfloodlight.openflow.protocol.OFPortDesc;
 import org.projectfloodlight.openflow.protocol.OFFactory;
-import org.projectfloodlight.openflow.protocol.OFMessage;
 import org.projectfloodlight.openflow.types.EthType;
 import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
-
-import org.projectfloodlight.openflow.protocol.OFFlowModify;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.OFFlowDelete;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
-import org.projectfloodlight.openflow.protocol.action.OFActionSetField;
 import org.projectfloodlight.openflow.protocol.action.OFActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstruction;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructionApplyActions;
 import org.projectfloodlight.openflow.protocol.instruction.OFInstructions;
-import org.projectfloodlight.openflow.protocol.match.Match;
-import org.projectfloodlight.openflow.protocol.match.MatchField;
-import org.projectfloodlight.openflow.protocol.oxm.OFOxms;
-import org.projectfloodlight.openflow.types.MacAddress;
 import org.projectfloodlight.openflow.types.OFBufferId;
 import org.projectfloodlight.openflow.types.OFPort;
 import org.projectfloodlight.openflow.types.TableId;
@@ -283,17 +248,16 @@ class Link {
         }
     }
 
-    // TODO: CHECK THIS LATER!
-    // public Link(String sw1, String intf1, String sw2, String intf2) {
-    //     this.sw1 = sw1;
-    //     this.intf1 = intf1;
-    //     this.sw2 = sw2;
-    //     this.intf2 = intf2; 
-    //     this.port1 = -1;
-    //     this.port2 = -1;
-    //     this.state1 = 1; // 1 represents link down. of.OFPPS_LINK_DOWN in POX.
-    //     this.state2 = 1; // 1 represents link down. of.OFPPS_LINK_DOWN in POX.
-    // }
+    public Link(String sw1, String intf1, String sw2, String intf2) {
+        this.sw1 = sw1;
+        this.intf1 = intf1;
+        this.sw2 = sw2;
+        this.intf2 = intf2; 
+        this.port1 = -1;
+        this.port2 = -1;
+        this.state1 = 1; // 1 represents link down. of.OFPPS_LINK_DOWN in POX.
+        this.state2 = 1; // 1 represents link down. of.OFPPS_LINK_DOWN in POX.
+    }
 
     public String toString() {
         return "Switch SW1: " + sw1 + ", Interface-1: " + intf1 + ", Switch SW2: " + sw2 + ", Interface-2: " + intf2 + ", Port-1: " + port1 + ", Port-2: " + port2 + ", State-1: " + state1 + ", State-2: " + state2;
@@ -384,33 +348,31 @@ public class SCL implements IFloodlightModule, IOFSwitchListener, ILinkDiscovery
                     }
                     Link tempLink = null;
 
-                    // TODO: CHECK THIS LATER!
-                    // if (counter == 4) {
-                    //     // SW1, INTF1, SW2, INTF2
-                    //     tempLink = new Link(tempStrings.get(0), tempStrings.get(1), tempStrings.get(2), tempStrings.get(3));
+                    if (counter == 4) {
+                        // SW1, INTF1, SW2, INTF2
+                        tempLink = new Link(tempStrings.get(0), tempStrings.get(1), tempStrings.get(2), tempStrings.get(3));
 
-                    //     this.links.add(tempLink);
-                    //     this.intf2link.put(tempStrings.get(0) + ":" + tempStrings.get(1),tempLink);
-                    //     this.intf2link.put(tempStrings.get(2) + ":" + tempStrings.get(3),tempLink);
+                        this.links.add(tempLink);
+                        this.intf2link.put(tempStrings.get(0) + ":" + tempStrings.get(1),tempLink);
+                        this.intf2link.put(tempStrings.get(2) + ":" + tempStrings.get(3),tempLink);
 
-                    //     if (this.sw2link.get(tempStrings.get(0)) == null) {
-                    //         Map<String, Link> temp = new HashMap<String, Link>();
-                    //         temp.put(tempStrings.get(2), tempLink);
-                    //         this.sw2link.put(tempStrings.get(0), temp);
-                    //     } else {
-                    //         this.sw2link.get(tempStrings.get(0)).put(tempStrings.get(2), tempLink);
-                    //     }
+                        if (this.sw2link.get(tempStrings.get(0)) == null) {
+                            Map<String, Link> temp = new HashMap<String, Link>();
+                            temp.put(tempStrings.get(2), tempLink);
+                            this.sw2link.put(tempStrings.get(0), temp);
+                        } else {
+                            this.sw2link.get(tempStrings.get(0)).put(tempStrings.get(2), tempLink);
+                        }
 
-                    //     if (this.sw2link.get(tempStrings.get(2)) == null) {
-                    //         Map<String, Link> temp = new HashMap<String, Link>();
-                    //         temp.put(tempStrings.get(0), tempLink);
-                    //         this.sw2link.put(tempStrings.get(2), temp);
-                    //     } else {
-                    //         this.sw2link.get(tempStrings.get(2)).put(tempStrings.get(0), tempLink);
-                    //     }
+                        if (this.sw2link.get(tempStrings.get(2)) == null) {
+                            Map<String, Link> temp = new HashMap<String, Link>();
+                            temp.put(tempStrings.get(0), tempLink);
+                            this.sw2link.put(tempStrings.get(2), temp);
+                        } else {
+                            this.sw2link.get(tempStrings.get(2)).put(tempStrings.get(0), tempLink);
+                        }
 
-                    // } else if (counter == 6) {
-                    if (counter == 6) {
+                    } else if (counter == 6) {
                         // SW1, INTF1, PORT1, SW2, INTF2, PORT2
                         tempLink = new Link(tempStrings.get(0), tempStrings.get(1), tempStrings.get(3), tempStrings.get(4), Integer.valueOf(tempStrings.get(2)), Integer.valueOf(tempStrings.get(5)));
                         
@@ -519,7 +481,7 @@ public class SCL implements IFloodlightModule, IOFSwitchListener, ILinkDiscovery
                     return;
                 } else {
                     networkGraph.removeEdge(sw1, sw2);
-                    // TODO: Update Flow Tables
+                    updateFlowEntries(calShortestRoute());
                 }
             } else if (sw2.equals(swID)) {
                 lnk.state2 = 1;
@@ -528,7 +490,7 @@ public class SCL implements IFloodlightModule, IOFSwitchListener, ILinkDiscovery
                     return;
                 } else {
                     networkGraph.removeEdge(sw1, sw2);
-                    // TODO: Update Flow Tables
+                    updateFlowEntries(calShortestRoute());
                 }
             }
         }
@@ -546,14 +508,13 @@ public class SCL implements IFloodlightModule, IOFSwitchListener, ILinkDiscovery
 
                 if (lnk == null) continue;
 
-                // TODO: CHECK THIS LATER!
-                // if (lnk.sw1.equals(swID)) {
-                //     lnk.port1 = u.getSrcPort().getPortNumber();
-                // } else if (lnk.sw2.equals(swID)) {
-                //     lnk.port2 = u.getSrcPort().getPortNumber();
-                // } else {
-                //     logger.info("WHY IS IT COMING HERE?");
-                // }
+                if (lnk.sw1.equals(swID)) {
+                    lnk.port1 = u.getSrcPort().getPortNumber();
+                } else if (lnk.sw2.equals(swID)) {
+                    lnk.port2 = u.getSrcPort().getPortNumber();
+                } else {
+                    logger.info("WHY IS IT COMING HERE?");
+                }
 
                 // TODO: Old State Variable
                 // TODO: lnk is None?
@@ -846,7 +807,7 @@ public class SCL implements IFloodlightModule, IOFSwitchListener, ILinkDiscovery
             if (swName.equals(lnk.sw1)) lnk.state1 = 1;
             if (swName.equals(lnk.sw2)) lnk.state2 = 1; // TODO: REPLACE THESE NUMBERS WITH FLOODLLIGHT CONSTS.
         }
-        // TODO: Update Flow Tables.
+        updateFlowEntries(calShortestRoute());
     }
 
     @Override
