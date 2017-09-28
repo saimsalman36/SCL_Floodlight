@@ -576,7 +576,7 @@ public class SCL implements IFloodlightModule, IOFSwitchListener, ILinkDiscovery
         .setExact(MatchField.IPV4_DST, nwDST)
         .build();
 
-        OFInstructions instructions = myFactory.instructions();
+        // OFInstructions instructions = myFactory.instructions();
         ArrayList<OFAction> actionList = new ArrayList<OFAction>();
         OFActions actions = myFactory.actions();
 
@@ -587,13 +587,13 @@ public class SCL implements IFloodlightModule, IOFSwitchListener, ILinkDiscovery
         actionList.add(output);
 
         /* Supply the OFAction list to the OFInstructionApplyActions. */
-        OFInstructionApplyActions applyActions = instructions.buildApplyActions()
-            .setActions(actionList)
-            .build();
+        // OFInstructionApplyActions applyActions = instructions.buildApplyActions()
+        //     .setActions(actionList)
+        //     .build();
         
         
-        ArrayList<OFInstruction> myInstructionList = new ArrayList<OFInstruction>();
-        myInstructionList.add(applyActions);
+        // ArrayList<OFInstruction> myInstructionList = new ArrayList<OFInstruction>();
+        // myInstructionList.add(applyActions);
         
         
         //TODO: Solve this hack!
@@ -602,9 +602,10 @@ public class SCL implements IFloodlightModule, IOFSwitchListener, ILinkDiscovery
                     .setBufferId(OFBufferId.NO_BUFFER)
                     .setPriority(50000)
                     .setMatch(myMatch)
-                    .setInstructions(myInstructionList)
+                    // .setInstructions(myInstructionList)
                     .setOutPort(OFPort.of(1))
-                    .setTableId(TableId.of(0))
+                    .setActions(actionList)
+                    // .setTableId(TableId.of(0))
                     .build();
 
             sw.write(flowDelete);
@@ -614,9 +615,10 @@ public class SCL implements IFloodlightModule, IOFSwitchListener, ILinkDiscovery
                     .setBufferId(OFBufferId.NO_BUFFER)
                     .setPriority(50000)
                     .setMatch(myMatch)
-                    .setInstructions(myInstructionList)
+                    // .setInstructions(myInstructionList)
                     .setOutPort(OFPort.of(1))
-                    .setTableId(TableId.of(0))
+                    .setActions(actionList)
+                    // .setTableId(TableId.of(0))
                     .build();
                  
             sw.write(flowAdd);
@@ -625,9 +627,10 @@ public class SCL implements IFloodlightModule, IOFSwitchListener, ILinkDiscovery
                     .setBufferId(OFBufferId.NO_BUFFER)
                     .setPriority(50000)
                     .setMatch(myMatch)
-                    .setInstructions(myInstructionList)
+                    // .setInstructions(myInstructionList)
                     .setOutPort(OFPort.of(1))
-                    .setTableId(TableId.of(0))
+                    .setActions(actionList)
+                    // .setTableId(TableId.of(0))
                     .build();
                  
             sw.write(flowModify);
