@@ -33,10 +33,10 @@ class MinimalTopo( Topo ):
         h7 = self.addHost('h007')
 
         # Create a switch
-        s1 = self.addSwitch( 's001', protocols='OpenFlow14' )
-        s2 = self.addSwitch( 's002', protocols='OpenFlow14' )
-        s3 = self.addSwitch( 's003', protocols='OpenFlow14' )
-        s4 = self.addSwitch( 's004', protocols='OpenFlow14' )
+        s1 = self.addSwitch( 's001', protocols='OpenFlow10' )
+        s2 = self.addSwitch( 's002', protocols='OpenFlow10' )
+        s3 = self.addSwitch( 's003', protocols='OpenFlow10' )
+        s4 = self.addSwitch( 's004', protocols='OpenFlow10' )
 
 
         # Add links between the switch and each host
@@ -71,7 +71,7 @@ def runMinimalTopo():
     # a remote controller.
     net = Mininet(
         topo=topo,
-        controller=lambda name: RemoteController( name, ip='127.0.0.1', port=6653, protocols='OpenFlow14' ),
+        controller=lambda name: RemoteController( name, ip='127.0.0.1', port=6633, protocols='OpenFlow10' ),
         switch=OVSSwitch,
         link=TCLink,
         autoSetMacs=True )
@@ -148,8 +148,8 @@ def runMinimalTopo():
     net.get('h007').cmd('arp -s 10.0.0.1 00:00:00:00:00:01')
     net.get('h007').cmd('arp -s 10.0.0.9 00:00:00:00:00:09')
 
-    # c1 = net.addController('c1', controller=RemoteController, ip='127.0.0.1', port=6643, protocols='OpenFlow14')
-    # c2 = net.addController('c2', controller=RemoteController, ip='127.0.0.1', port=6653, protocols='OpenFlow14')
+    # c1 = net.addController('c1', controller=RemoteController, ip='127.0.0.1', port=6643, protocols='OpenFlow10')
+    # c2 = net.addController('c2', controller=RemoteController, ip='127.0.0.1', port=6653, protocols='OpenFlow10')
    # c2 = net.addController('c2', controller=RemoteController, ip="127.0.0.1", port=6633)
 
     # Actually start the network

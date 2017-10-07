@@ -296,6 +296,9 @@ class scl_routing(object):
         msg.priority = 50000    # hard code
         msg.actions.append(of.ofp_action_output(port = outport))
         if sw_name in self.sw2conn:
+        	# log.debug("SAIM - P Start")
+        	# log.debug(msg.pack())
+        	# log.debug("SAIM - P End")
             self.sw2conn[sw_name].send(msg.pack())
 
     def update_flow_tables(self, updates): # Understood

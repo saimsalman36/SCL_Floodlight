@@ -33,6 +33,7 @@ def handle_VENDOR(scl, conn, msg):
     reply.xid = msg.xid
     reply.vendor = msg.vendor
     scl.logger.debug(reply.show())
+    reply.datapath_id = scl.streams.agent_list.index(id2str(conn.conn_id))
     scl.streams.upstreams[conn.conn_id].put(reply.pack())
 
 def handle_STATS_REQUEST(scl, conn, msg):
@@ -90,11 +91,18 @@ def handle_SET_CONFIG(scl, conn, msg):
     pass
 
 def handle_FLOW_MOD(scl2ctrl, conn, msg):
+    scl2ctrl.logger.debug('ofp_flow_mod')
     if scl2ctrl.streams.ofp_connected[conn.conn_id]:
+        scl2ctrl.logger.debug('Point -- 1')
         # put msg and corresponding scl header into downstreams
         scl2ctrl.streams.downstreams[conn.conn_id].put([msg.pack(), scl.SCLT_OF_PROXY])
+        scl2ctrl.logger.debug('Point -- 2')
         # maintain the whole dataplane flow tables
+        scl2ctrl.logger.debug(scl2ctrl.streams)
+        scl2ctrl.logger.debug(scl2ctrl.streams.flow_table_db)
+        scl2ctrl.logger.debug(conn.conn_id)
         scl2ctrl.streams.flow_table_db.ofp_msg_update(conn.conn_id, msg)
+        scl2ctrl.logger.debug('Point -- 3')
 
 def handle_BARRIER_REQUEST(scl, conn, msg):
     reply = msg
@@ -434,19 +442,9 @@ class Scl2Ctrl(object):
 
             # handle ofp msg
             try:
-                # self.logger.debug("SAIM")
-                # self.logger.debug(self.streams.__dict__)
-                # self.logger.debug(self.streams.agent_list[0])
-                # self.logger.debug(self.streams.agent_list[0].__dict__)
-                # self.logger.debug(self.streams.agent_list.__dict__)
-                # self.logger.debug(self.__dict__)
-                # self.logger.debug(self.inputs[0])
-                self.logger.debug("SAIM")
-                self.logger.debug(ofp_type)
-                self.logger.debug(msg)
-                self.logger.debug(msg.__dict__)
-                self.logger.debug("SAIM")
-
+                if ofp_type == 13:
+                    self.logger.debug(msg)
+                    self.logger.debug(msg.__dict__)
                 h = handlers[ofp_type]
                 self.logger.debug(h)
                 h(self, conn, msg)
