@@ -39,6 +39,7 @@ import org.projectfloodlight.openflow.protocol.match.Match;
 import org.projectfloodlight.openflow.protocol.match.MatchField;
 import org.projectfloodlight.openflow.protocol.OFFlowAdd;
 import org.projectfloodlight.openflow.protocol.OFFlowDelete;
+import org.projectfloodlight.openflow.protocol.OFFlowModify;
 import org.projectfloodlight.openflow.protocol.action.OFAction;
 import org.projectfloodlight.openflow.protocol.action.OFActionOutput;
 import org.projectfloodlight.openflow.protocol.action.OFActions;
@@ -53,6 +54,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
+import java.util.concurrent.TimeUnit;
+
 class Triples {
     String host1;
     String host2;
@@ -65,7 +68,7 @@ class Triples {
     }
 
     public String toString() {
-        return "Host-1: " + this.host1 + ", Host-2: " + this.host2;
+        return "Host-1: " + this.host1 + ", Host-2: " + this.host2 + ", LINK: " + this.lnk.toString();
     }
 }
 
@@ -76,19 +79,23 @@ class NetworkX {
         graph = new HashMap<String, List<String>>();
     }
 
-    public void printGraph() {
+    public String printGraph() {
+    	String ret = "";
+    	
         for (Map.Entry<String, List<String>> entry : this.graph.entrySet()) {
-            System.out.print(entry.getKey() + ": ");
+            ret += (entry.getKey() + ": ");
 
             List<String> temp = entry.getValue();
 
             if (temp != null) {
                 for (Iterator<String> it = temp.iterator(); it.hasNext();) {
-                    System.out.print(it.next() + ", ");
+                    ret += (it.next() + ", ");
                 }
-                System.out.println();
+                ret += '\n';
             }
         }
+
+        return ret;
     }
 
     public void addNode(String name) {
@@ -173,24 +180,29 @@ class NetworkX {
 
         if (res.size() == 0) return res;
 
-        Collections.sort(res, new Comparator<List<String>>() {
+        Collections.sort(res,new Comparator<List<String>>() {
             @Override
             public int compare(List<String> lhs, List<String> rhs) {
-            // -1 - less than, 1 - greater than, 0 - equal, all inversed for descending
-                return lhs.size() > rhs.size() ? -1 : (lhs.size() < rhs.size()) ? 1 : 0;
+                if (lhs.size() < rhs.size()) {
+                    return -1;
+                } else if (lhs.size() > rhs.size()) {
+                    return 1;
+                } else {
+                    return 0;
+                }
             }
         });
 
         Integer minSizedPath = res.get(0).size();
+        List<List<String>> temp = new ArrayList<List<String>>();
 
-        for (Iterator<List<String>> iterator = res.iterator(); iterator.hasNext();) {
-            Integer val = iterator.next().size();
-            if (val > minSizedPath) {
-                iterator.remove();
+        for (int i = 0; i < res.size(); i++) {
+            if (res.get(i).size() == minSizedPath) {
+                temp.add(res.get(i));
             }
         }
 
-        return res;
+        return temp;
     }
 
     private void printAllPaths_(String u, String d, Map<String, Boolean> visited, List<String> path, List<List<String>> res) {
@@ -407,7 +419,7 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
 
         for (String name: this.hosts.keySet()) {
             if (!this.ctrls.contains(name)) {
-                // logger.info(name);
+                logger.info("Host Added: " + name);
                 this.networkGraph.addNode(name);
             }
         }
@@ -501,60 +513,8 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
         }
     }
 
-    // @Override
-    // public void linkDiscoveryUpdate(List<LDUpdate> updateList) {
-        // // logger.info("------------ UPDATES UPDATES ---------------------");
-        // for (LDUpdate u : updateList) {
-        //     // logger.info("getOperation(): "+ u.getOperation().toString());
-        //     if (u.getOperation() == UpdateOperation.PORT_UP) {
-        //         String swID = switchID_to_string(u.getSrc());
-        //         String interfaceName = swToConn.get(swID).getPort(u.getSrcPort()).getName();
-        //         logger.info("SAIM -- ");
-        //         logger.info(interfaceName);
-        //         Link lnk = intf2link.get(swID + ':' + interfaceName);
-
-        //         if (lnk == null) continue;
-
-        //         if (lnk.sw1.equals(swID)) {
-        //             lnk.port1 = u.getSrcPort().getPortNumber();
-        //         } else if (lnk.sw2.equals(swID)) {
-        //             lnk.port2 = u.getSrcPort().getPortNumber();
-        //         } else {
-        //             logger.info("WHY IS IT COMING HERE?");
-        //         }
-
-        //         // TODO: Old State Variable
-        //         // TODO: lnk is None?
-
-        //         String sw1 = lnk.sw1;
-        //         String sw2 = lnk.sw2;
-
-        //         if (sw1.equals(swID)) {
-        //             lnk.state1 = 512;
-
-        //             if (lnk.state2 == 512) {
-        //                 this.networkGraph.addEdge(sw1, sw2);
-        //                 updateFlowEntries(calShortestRoute());
-        //             } else {
-        //                 logger.info("WAIT FOR OTHER PORT.");
-        //             }
-        //         } else if (sw2.equals(swID)) {
-        //             lnk.state2 = 512;
-
-        //             if (lnk.state1 == 512) {
-        //                 this.networkGraph.addEdge(sw1, sw2);
-        //                 updateFlowEntries(calShortestRoute());
-        //             } else {
-        //                 logger.info("WAIT FOR OTHER PORT.");
-        //             }
-        //         }
-        //     }
-        // }
-    // }
-
     @Override
     public void switchActivated(DatapathId switchId) {
-
     }
 
     void updateFlowEntry(String switchName, String host1, String host2, Link lnk, String cmd) {
@@ -574,7 +534,8 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
             outPort = OFPort.of(lnk.port2);
         }
 
-        logger.info("Switch: " + switchName + " , Host-1: " + host1 + ", Host-2: " + host2 + ", Outport: " + lnk.port1 + ", Outport: " + lnk.port2 + ",Entered: " + outPort.toString());
+        // logger.info("Adding Flow -- Adding Flow");
+        // logger.info("Switch: " + switchName + " , Host-1: " + host1 + ", Host-2: " + host2 + ", Outport: " + lnk.port1 + ", Outport: " + lnk.port2 + ",Entered: " + outPort.toString());
 
         Match myMatch = myFactory.buildMatch()
         .setExact(MatchField.ETH_TYPE, EthType.IPv4)
@@ -595,6 +556,43 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
         
         //TODO: Solve this hack!
         if (cmd.equals("modify")) {
+            OFFlowModify flowModify = myFactory.buildFlowModify()
+                    .setBufferId(OFBufferId.NO_BUFFER)
+                    .setPriority(50000)
+                    .setMatch(myMatch)
+                    // .setInstructions(myInstructionList)
+                    .setOutPort(OFPort.of(1))
+                    .setActions(actionList)
+                    // .setTableId(TableId.of(0))
+                    .build();
+
+            sw.write(flowModify);
+
+            // OFFlowDelete flowDelete = myFactory.buildFlowDelete()
+            //         .setBufferId(OFBufferId.NO_BUFFER)
+            //         .setPriority(50000)
+            //         .setMatch(myMatch)
+            //         // .setInstructions(myInstructionList)
+            //         .setOutPort(OFPort.of(1))
+            //         .setActions(actionList)
+            //         // .setTableId(TableId.of(0))
+            //         .build();
+
+            // sw.write(flowDelete);
+
+
+            // OFFlowAdd flowAdd = myFactory.buildFlowAdd()
+            //         .setBufferId(OFBufferId.NO_BUFFER)
+            //         .setPriority(50000)
+            //         .setMatch(myMatch)
+            //         // .setInstructions(myInstructionList)
+            //         .setOutPort(OFPort.of(1))
+            //         .setActions(actionList)
+            //         // .setTableId(TableId.of(0))
+            //         .build();
+                 
+            // sw.write(flowAdd);
+        } else if (cmd.equals("delete")) {
             OFFlowDelete flowDelete = myFactory.buildFlowDelete()
                     .setBufferId(OFBufferId.NO_BUFFER)
                     .setPriority(50000)
@@ -604,33 +602,8 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
                     .setActions(actionList)
                     // .setTableId(TableId.of(0))
                     .build();
-
+                 
             sw.write(flowDelete);
-
-
-            OFFlowAdd flowAdd = myFactory.buildFlowAdd()
-                    .setBufferId(OFBufferId.NO_BUFFER)
-                    .setPriority(50000)
-                    .setMatch(myMatch)
-                    // .setInstructions(myInstructionList)
-                    .setOutPort(OFPort.of(1))
-                    .setActions(actionList)
-                    // .setTableId(TableId.of(0))
-                    .build();
-                 
-            sw.write(flowAdd);
-        } else if (cmd.equals("delete")) {
-            OFFlowDelete flowModify = myFactory.buildFlowDelete()
-                    .setBufferId(OFBufferId.NO_BUFFER)
-                    .setPriority(50000)
-                    .setMatch(myMatch)
-                    // .setInstructions(myInstructionList)
-                    .setOutPort(OFPort.of(1))
-                    .setActions(actionList)
-                    // .setTableId(TableId.of(0))
-                    .build();
-                 
-            sw.write(flowModify);
         }     
     }
 
@@ -654,7 +627,6 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
         it = updates.get("delete").entrySet().iterator();
 
         while (it.hasNext()) {
-            logger.info("DELETING!!!!");
             Map.Entry pair = (Map.Entry)it.next();
             String swName = (String) pair.getKey();
             
@@ -665,15 +637,44 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
     }
 
     public Map<String, Map<String, List<Triples>>> calShortestRoute() {
-        Integer current = 0;
-        
-        Map<String, List<Triples>> tempMap = new HashMap<String, List<Triples>>();
-        Map<String, List<Triples>> tempMap_ = new HashMap<String, List<Triples>>();
-        
+        Integer current = 0;        
+        Map<String, List<Triples>> tempMapModify = new HashMap<String, List<Triples>>();
+        Map<String, List<Triples>> tempMapDelete = new HashMap<String, List<Triples>>();
+
+        for (String sw : this.switches.keySet()) {
+            tempMapModify.put(sw,new ArrayList<Triples>());
+            tempMapDelete.put(sw,new ArrayList<Triples>());
+        }
+
         Map<String, Map<String, List<Triples>>> updates = new HashMap<String, Map<String, List<Triples>>>();
-        updates.put("modify", tempMap_);
-        updates.put("delete", tempMap);
+        updates.put("modify", tempMapDelete);
+        updates.put("delete", tempMapModify);
         //TODO: Map -> That contains modified updates and deleted updates.
+
+        for (String sw : this.switches.keySet()) {
+            
+            Map<String, Map<String, Link>> temp1 = new HashMap<String, Map<String, Link>>();
+            Map<String, Map<String, String>> tempStatus1 = new HashMap<String, Map<String, String>>();
+
+            for (String host1 : this.hosts.keySet()) {
+                
+                Map<String, Link> temp2 = new HashMap<String, Link>();
+                Map<String, String> tempStatus2 = new HashMap<String, String>();
+
+                for (String host2 : this.hosts.keySet()) {
+            
+                    if (host1.equals(host2)) continue;
+                    
+                    temp2.put(host2, null);
+                    temp1.put(host1, temp2);
+                    this.sw_tables.put(sw,temp1);
+
+                    tempStatus2.put(host2, "");
+                    tempStatus1.put(host1, tempStatus2);
+                    this.sw_tables_status.put(sw,tempStatus1);
+                }
+            }
+        }
 
         for (String host1 : this.hosts.keySet()) {
             for (String host2 : this.hosts.keySet()) {
@@ -688,108 +689,30 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
                     String a = path.get(i);
                     String b = path.get(i + 1);
 
-                    Link lnk = this.sw2link.get(a).get(b);
-                    Triples tempTriple = new Triples(host1, host2, lnk);
-                    boolean notChecked = true;
+                    Triples tempTriple = new Triples(host1, host2, this.sw2link.get(a).get(b));
 
-                    if (this.sw_tables.get(a) == null) {
-                        Map<String, Link> temp = new HashMap<String, Link>();
-                        temp.put(host2,lnk);
-
-                        Map<String, String> statusTemp = new HashMap<String, String>();
-                        statusTemp.put(host2,"updated");
-
-                        Map<String, Map<String, Link>> temp2 = new HashMap<String, Map<String, Link>>();
-                        Map<String, Map<String, String>> statusTemp2 = new HashMap<String, Map<String, String>>();
-                        statusTemp2.put(host1,statusTemp);
-                        temp2.put(host1, temp);
-
-                        this.sw_tables_status.put(a,statusTemp2);
-                        this.sw_tables.put(a, temp2);
-                    } else if (this.sw_tables.get(a) != null) {
-                        Map<String, Map<String, Link>> temp = this.sw_tables.get(a);
-                        Map<String, Map<String, String>> statusTemp = this.sw_tables_status.get(a);
-
-                        if (temp.get(host1) == null) {
-                            Map<String, Link> temp2 = new HashMap<String, Link>();
-                            Map<String, String> statusTemp2 = new HashMap<String, String>();
-
-                            temp2.put(host2,lnk);
-                            statusTemp2.put(host2, "updated");
-
-                            temp.put(host1, temp2);
-                            statusTemp.put(host1, statusTemp2);
-                        } else if (temp.get(host1) != null) {
-                            Map<String, Link> temp2 = temp.get(host1);
-                            Map<String, String> statusTemp2 = statusTemp.get(host1);
-
-                            if (temp2.get(host2) == null) {
-                                temp2.put(host2,lnk);
-                                statusTemp2.put(host2, "updated");
-                            } else if (temp2.get(host2) != null) {
-                                this.sw_tables_status.get(a).get(host1).put(host2, "checked");
-                                notChecked = false;
-                            }
-                        }
-                    }
-                    if (notChecked == true) {
-                        if (updates.get("modify").get(a) == null) {
-                            List<Triples> tmp = new ArrayList<Triples>();
-                            tmp.add(tempTriple);
-                            updates.get("modify").put(a, tmp);
-                        } else {
-                            updates.get("modify").get(a).add(tempTriple);
-                        }
+                    if (this.sw_tables.get(a).get(host1).get(host2) == null) {
+                        this.sw_tables.get(a).get(host1).put(host2,this.sw2link.get(a).get(b));
+                        updates.get("modify").get(a).add(tempTriple);
+                        this.sw_tables_status.get(a).get(host1).put(host2, "updated");
+                    } else {
+                        this.sw_tables_status.get(a).get(host1).put(host2, "checked");
                     }
                 }
             }
         }
 
-        List<String> toBeDeleted = new ArrayList<String>();
-
         for (String sw : this.sw_tables_status.keySet()) {
-           Map<String, Map<String, String>> temp = this.sw_tables_status.get(sw);
-            
-            for (String host1 : temp.keySet()) {
-                Map<String, String> temp_ = temp.get(host1);
-                
-                for (String host2 : temp_.keySet()) {
-                    String res = temp_.get(host2);
-
-                    if ((!res.equals("updated")) && (!res.equals("checked"))) {
-                        logger.info("Okay so the code goes here");
-                        if (updates.get("delete").get(sw) == null) {
-                            List<Triples> tmp = new ArrayList<Triples>();
-                            tmp.add(new Triples(host1, host2, this.sw_tables.get(sw).get(host1).get(host2)));
-                            updates.get("delete").put(sw, tmp);
-                        } else {
+            for (String host1 : this.sw_tables_status.get(sw).keySet()) {
+                for (String host2 : this.sw_tables_status.get(sw).get(host1).keySet()) {
+                    if (this.sw_tables_status.get(sw).get(host1).get(host2).equals("to_be_deleted")) {
                             updates.get("delete").get(sw).add(new Triples(host1, host2, this.sw_tables.get(sw).get(host1).get(host2)));
-                        }
-
-
-                        // TODO: Clear this hack later!
-                        toBeDeleted.add(sw);
-                        toBeDeleted.add(host1);
-                        toBeDeleted.add(host2);
-
-                        // this.sw_tables_status.get(sw).get(host1).remove(host2);
-                        // this.sw_tables.get(sw).get(host1).remove(host2);
                     } else {
                         this.sw_tables_status.get(sw).get(host1).put(host2, "to_be_deleted");
                     }
-                }    
+                }
             }
         }
-
-        for (int i = 0; i < toBeDeleted.size(); i+=3) {
-            this.sw_tables_status.get(toBeDeleted.get(i)).get(toBeDeleted.get(i+1)).remove(toBeDeleted.get(i+2));
-            this.sw_tables.get(toBeDeleted.get(i)).get(toBeDeleted.get(i+1)).remove(toBeDeleted.get(i+2));
-        } 
-        // logger.info("START OF MAP");
-        // logger.info(Integer.toString(updates.get("modify").size()));
-        // logger.info(Integer.toString(sw_tables.size()));
-        // logger.info(Integer.toString(sw_tables_status.size()));
-        // logger.info("END OF MAP");
         return updates;
     }
 
@@ -816,7 +739,7 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
 
     @Override
     public void switchAdded(DatapathId switchId) {
-        logger.info("Switch up: " + switchID_to_string(switchId));
+        logger.info("Switch up: " + switchId.toString());
 
         String swName = switchID_to_string(switchId);
 
@@ -836,9 +759,12 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
 
         // Get the enabled ports and start adding flow entries.
 
+        logger.info("Switch Added -- Now using the ports to update flow entries.");
+
         Collection<OFPort> portCollection = sw.getEnabledPortNumbers();
 
         for (OFPort port : portCollection) {
+            logger.info("PORT -- PORT: " + port.toString());
             linkService.AddToSuppressLLDPs(switchId, port);
 
             String swID = switchID_to_string(switchId);
@@ -885,16 +811,17 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
  
     @Override
     public void startUp(FloodlightModuleContext context) {
-        switchService.addOFSwitchListener(this);
         // linkService.addListener(this);
 
         try {
-            // String fmJson = "{\"switches\": {\"s018\": \"10.0.18.1\", \"s019\": \"10.0.19.1\", \"s012\": \"10.0.12.1\", \"s013\": \"10.0.13.1\", \"s010\": \"10.0.10.1\", \"s011\": \"10.0.11.1\", \"s016\": \"10.0.16.1\", \"s017\": \"10.0.17.1\", \"s014\": \"10.0.14.1\", \"s015\": \"10.0.15.1\", \"s005\": \"10.0.5.1\", \"s004\": \"10.0.4.1\", \"s007\": \"10.0.7.1\", \"s006\": \"10.0.6.1\", \"s001\": \"10.0.1.1\", \"s000\": \"10.0.0.1\", \"s003\": \"10.0.3.1\", \"s002\": \"10.0.2.1\", \"s009\": \"10.0.9.1\", \"s008\": \"10.0.8.1\"}, \"hosts\": {\"h014\": \"10.1.14.1\", \"h008\": \"10.1.8.1\", \"h009\": \"10.1.9.1\", \"h004\": \"10.1.4.1\", \"h005\": \"10.1.5.1\", \"h006\": \"10.1.6.1\", \"h007\": \"10.1.7.1\", \"h000\": \"10.1.0.1\", \"h001\": \"10.1.1.1\", \"h002\": \"10.1.2.1\", \"h003\": \"10.1.3.1\", \"h011\": \"10.1.11.1\", \"h012\": \"10.1.12.1\", \"h013\": \"10.1.13.1\", \"h010\": \"10.1.10.1\", \"h015\": \"10.1.15.1\"}, \"links\": [[\"s011\", \"s011-eth0\", 1, \"s002\", \"s002-eth3\", 4], [\"s005\", \"s005-eth3\", 4, \"s013\", \"s013-eth1\", 2], [\"s007\", \"s007-eth1\", 2, \"s003\", \"s003-eth1\", 2], [\"s009\", \"s009-eth0\", 1, \"s002\", \"s002-eth2\", 3], [\"s006\", \"s006-eth0\", 1, \"s000\", \"s000-eth1\", 2], [\"s010\", \"s010-eth0\", 1, \"s000\", \"s000-eth3\", 4], [\"s017\", \"s017-eth2\", 3, \"h010\", \"h010-eth0\", 1], [\"s011\", \"s011-eth3\", 4, \"s019\", \"s019-eth1\", 2], [\"s005\", \"s005-eth1\", 2, \"s003\", \"s003-eth0\", 1], [\"s007\", \"s007-eth3\", 4, \"s015\", \"s015-eth1\", 2], [\"s011\", \"s011-eth1\", 2, \"s003\", \"s003-eth3\", 4], [\"s008\", \"s008-eth2\", 3, \"s016\", \"s016-eth0\", 1], [\"s008\", \"s008-eth3\", 4, \"s017\", \"s017-eth0\", 1], [\"s008\", \"s008-eth0\", 1, \"s000\", \"s000-eth2\", 3], [\"s010\", \"s010-eth1\", 2, \"s001\", \"s001-eth3\", 4], [\"s004\", \"s004-eth0\", 1, \"s000\", \"s000-eth0\", 1], [\"s015\", \"s015-eth2\", 3, \"h006\", \"h006-eth0\", 1], [\"s010\", \"s010-eth3\", 4, \"s019\", \"s019-eth0\", 1], [\"s009\", \"s009-eth3\", 4, \"s017\", \"s017-eth1\", 2], [\"s014\", \"s014-eth3\", 4, \"h005\", \"h005-eth0\", 1], [\"s006\", \"s006-eth3\", 4, \"s015\", \"s015-eth0\", 1], [\"s005\", \"s005-eth2\", 3, \"s012\", \"s012-eth1\", 2], [\"s005\", \"s005-eth0\", 1, \"s002\", \"s002-eth0\", 1], [\"s014\", \"s014-eth2\", 3, \"h004\", \"h004-eth0\", 1], [\"s011\", \"s011-eth2\", 3, \"s018\", \"s018-eth1\", 2], [\"s013\", \"s013-eth2\", 3, \"h002\", \"h002-eth0\", 1], [\"s004\", \"s004-eth2\", 3, \"s012\", \"s012-eth0\", 1], [\"s016\", \"s016-eth3\", 4, \"h009\", \"h009-eth0\", 1], [\"s018\", \"s018-eth3\", 4, \"h013\", \"h013-eth0\", 1], [\"s008\", \"s008-eth1\", 2, \"s001\", \"s001-eth2\", 3], [\"s006\", \"s006-eth2\", 3, \"s014\", \"s014-eth0\", 1], [\"s009\", \"s009-eth1\", 2, \"s003\", \"s003-eth2\", 3], [\"s019\", \"s019-eth2\", 3, \"h014\", \"h014-eth0\", 1], [\"s004\", \"s004-eth1\", 2, \"s001\", \"s001-eth0\", 1], [\"s006\", \"s006-eth1\", 2, \"s001\", \"s001-eth1\", 2], [\"s010\", \"s010-eth2\", 3, \"s018\", \"s018-eth0\", 1], [\"s009\", \"s009-eth2\", 3, \"s016\", \"s016-eth1\", 2], [\"s012\", \"s012-eth2\", 3, \"h000\", \"h000-eth0\", 1], [\"s012\", \"s012-eth3\", 4, \"h001\", \"h001-eth0\", 1], [\"s018\", \"s018-eth2\", 3, \"h012\", \"h012-eth0\", 1], [\"s007\", \"s007-eth0\", 1, \"s002\", \"s002-eth1\", 2], [\"s004\", \"s004-eth3\", 4, \"s013\", \"s013-eth0\", 1], [\"s007\", \"s007-eth2\", 3, \"s014\", \"s014-eth1\", 2], [\"s017\", \"s017-eth3\", 4, \"h011\", \"h011-eth0\", 1]], \"ctrls\": [\"h003\", \"h007\", \"h008\", \"h015\"]}";
-            String fmJson = "{\"switches\": {\"s004\": \"10.0.1.1\",\"s002\": \"10.0.0.1\",\"s003\": \"10.0.3.1\",\"s001\": \"10.0.2.1\"},\"hosts\": {\"h004\": \"10.0.0.5\",\"h005\": \"10.0.0.6\",\"h006\": \"10.0.0.7\",\"h007\": \"10.0.0.8\",\"h000\": \"10.0.0.1\",\"h001\": \"10.0.0.2\",\"h002\": \"10.0.0.3\",\"h003\": \"10.0.0.4\"},\"links\": [[\"s001\",\"s001-eth1\",1,\"s002\",\"s002-eth1\",1],[\"s001\",\"s001-eth2\",2,\"s003\",\"s003-eth1\",1],[\"s001\",\"s001-eth3\",3,\"s004\",\"s004-eth1\",1],[\"s002\",\"s002-eth2\",2,\"s003\",\"s003-eth2\",2],[\"s002\",\"s002-eth3\",3,\"s004\",\"s004-eth2\",2],[\"s003\",\"s003-eth3\",3,\"s004\",\"s004-eth3\",3],[\"s001\",\"s001-eth4\",4,\"h000\",\"h000-eth0\",1],[\"s001\",\"s001-eth5\",5,\"h001\",\"h001-eth0\",1],[\"s002\",\"s002-eth4\",4,\"h002\",\"h002-eth0\",1],[\"s003\",\"s003-eth4\",4,\"h004\",\"h004-eth0\",1],[\"s003\",\"s003-eth5\",5,\"h005\",\"h005-eth0\",1],[\"s004\",\"s004-eth4\",4,\"h006\",\"h006-eth0\",1]],\"ctrls\": [\"h003\",\"h007\"]}";
+            String fmJson = "{\"switches\": {\"s018\": \"10.0.18.1\", \"s019\": \"10.0.19.1\", \"s012\": \"10.0.12.1\", \"s013\": \"10.0.13.1\", \"s010\": \"10.0.10.1\", \"s011\": \"10.0.11.1\", \"s016\": \"10.0.16.1\", \"s017\": \"10.0.17.1\", \"s014\": \"10.0.14.1\", \"s015\": \"10.0.15.1\", \"s005\": \"10.0.5.1\", \"s004\": \"10.0.4.1\", \"s007\": \"10.0.7.1\", \"s006\": \"10.0.6.1\", \"s001\": \"10.0.1.1\", \"s020\": \"10.0.0.1\", \"s003\": \"10.0.3.1\", \"s002\": \"10.0.2.1\", \"s009\": \"10.0.9.1\", \"s008\": \"10.0.8.1\"}, \"hosts\": {\"h014\": \"10.1.14.1\", \"h008\": \"10.1.8.1\", \"h009\": \"10.1.9.1\", \"h004\": \"10.1.4.1\", \"h005\": \"10.1.5.1\", \"h006\": \"10.1.6.1\", \"h007\": \"10.1.7.1\", \"h000\": \"10.1.0.1\", \"h001\": \"10.1.1.1\", \"h002\": \"10.1.2.1\", \"h003\": \"10.1.3.1\", \"h011\": \"10.1.11.1\", \"h012\": \"10.1.12.1\", \"h013\": \"10.1.13.1\", \"h010\": \"10.1.10.1\", \"h015\": \"10.1.15.1\"}, \"links\": [[\"s011\", \"s011-eth1\", 1, \"s002\", \"s002-eth4\", 4], [\"s005\", \"s005-eth4\", 4, \"s013\", \"s013-eth2\", 2], [\"s007\", \"s007-eth2\", 2, \"s003\", \"s003-eth2\", 2], [\"s009\", \"s009-eth1\", 1, \"s002\", \"s002-eth3\", 3], [\"s006\", \"s006-eth1\", 1, \"s020\", \"s020-eth2\", 2], [\"s010\", \"s010-eth1\", 1, \"s020\", \"s020-eth4\", 4], [\"s017\", \"s017-eth3\", 3, \"h010\", \"h010-eth0\", 1], [\"s011\", \"s011-eth4\", 4, \"s019\", \"s019-eth2\", 2], [\"s005\", \"s005-eth2\", 2, \"s003\", \"s003-eth1\", 1], [\"s007\", \"s007-eth4\", 4, \"s015\", \"s015-eth2\", 2], [\"s011\", \"s011-eth2\", 2, \"s003\", \"s003-eth4\", 4], [\"s008\", \"s008-eth3\", 3, \"s016\", \"s016-eth1\", 1], [\"s008\", \"s008-eth4\", 4, \"s017\", \"s017-eth1\", 1], [\"s008\", \"s008-eth1\", 1, \"s020\", \"s020-eth3\", 3], [\"s010\", \"s010-eth2\", 2, \"s001\", \"s001-eth4\", 4], [\"s004\", \"s004-eth1\", 1, \"s020\", \"s020-eth1\", 1], [\"s015\", \"s015-eth3\", 3, \"h006\", \"h006-eth0\", 1], [\"s010\", \"s010-eth4\", 4, \"s019\", \"s019-eth1\", 1], [\"s009\", \"s009-eth4\", 4, \"s017\", \"s017-eth2\", 2], [\"s014\", \"s014-eth4\", 4, \"h005\", \"h005-eth0\", 1], [\"s006\", \"s006-eth4\", 4, \"s015\", \"s015-eth1\", 1], [\"s005\", \"s005-eth3\", 3, \"s012\", \"s012-eth2\", 2], [\"s005\", \"s005-eth1\", 1, \"s002\", \"s002-eth1\", 1], [\"s014\", \"s014-eth3\", 3, \"h004\", \"h004-eth0\", 1], [\"s011\", \"s011-eth3\", 3, \"s018\", \"s018-eth2\", 2], [\"s013\", \"s013-eth3\", 3, \"h002\", \"h002-eth0\", 1], [\"s004\", \"s004-eth3\", 3, \"s012\", \"s012-eth1\", 1], [\"s016\", \"s016-eth4\", 4, \"h009\", \"h009-eth0\", 1], [\"s018\", \"s018-eth4\", 4, \"h013\", \"h013-eth0\", 1], [\"s008\", \"s008-eth2\", 2, \"s001\", \"s001-eth3\", 3], [\"s006\", \"s006-eth3\", 3, \"s014\", \"s014-eth1\", 1], [\"s009\", \"s009-eth2\", 2, \"s003\", \"s003-eth3\", 3], [\"s019\", \"s019-eth3\", 3, \"h014\", \"h014-eth0\", 1], [\"s004\", \"s004-eth2\", 2, \"s001\", \"s001-eth1\", 1], [\"s006\", \"s006-eth2\", 2, \"s001\", \"s001-eth2\", 2], [\"s010\", \"s010-eth3\", 3, \"s018\", \"s018-eth1\", 1], [\"s009\", \"s009-eth3\", 3, \"s016\", \"s016-eth2\", 2], [\"s012\", \"s012-eth3\", 3, \"h000\", \"h000-eth0\", 1], [\"s012\", \"s012-eth4\", 4, \"h001\", \"h001-eth0\", 1], [\"s018\", \"s018-eth3\", 3, \"h012\", \"h012-eth0\", 1], [\"s007\", \"s007-eth1\", 1, \"s002\", \"s002-eth2\", 2], [\"s004\", \"s004-eth4\", 4, \"s013\", \"s013-eth1\", 1], [\"s007\", \"s007-eth3\", 3, \"s014\", \"s014-eth2\", 2], [\"s017\", \"s017-eth4\", 4, \"h011\", \"h011-eth0\", 1]], \"ctrls\": [\"h003\", \"h007\", \"h008\", \"h015\"]}";
+            // String fmJson = "{\"switches\": {\"s004\": \"10.0.1.1\",\"s002\": \"10.0.0.1\",\"s003\": \"10.0.3.1\",\"s001\": \"10.0.2.1\"},\"hosts\": {\"h004\": \"10.0.0.5\",\"h005\": \"10.0.0.6\",\"h006\": \"10.0.0.7\",\"h007\": \"10.0.0.8\",\"h000\": \"10.0.0.1\",\"h001\": \"10.0.0.2\",\"h002\": \"10.0.0.3\",\"h003\": \"10.0.0.4\"},\"links\": [[\"s001\",\"s001-eth1\",2,\"s002\",\"s002-eth1\",2],[\"s001\",\"s001-eth2\",3,\"s003\",\"s003-eth1\",2],[\"s001\",\"s001-eth3\",4,\"s004\",\"s004-eth1\",2],[\"s002\",\"s002-eth2\",3,\"s003\",\"s003-eth2\",4],[\"s002\",\"s002-eth3\",4,\"s004\",\"s004-eth2\",3],[\"s003\",\"s003-eth3\",4,\"s004\",\"s004-eth3\",4],[\"s001\",\"s001-eth4\",5,\"h000\",\"h000-eth0\",2],[\"s001\",\"s001-eth5\",6,\"h001\",\"h001-eth0\",1],[\"s002\",\"s002-eth4\",5,\"h002\",\"h002-eth0\",1],[\"s003\",\"s003-eth4\",5,\"h004\",\"h004-eth0\",1],[\"s003\",\"s003-eth5\",6,\"h005\",\"h005-eth0\",1],[\"s004\",\"s004-eth4\",5,\"h006\",\"h006-eth0\",1]],\"ctrls\": [\"h003\",\"h007\"]}";
             // String fmJson = new String(Files.readAllBytes(Paths.get("/home/saimsalman/Desktop/SCL/scl/conf/fattree_inband.json")));
             loadTopology(fmJson);    
         } catch (IOException e) {
             logger.info("FAILED");
-        } 
+        }
+
+        switchService.addOFSwitchListener(this); 
     }
 }
