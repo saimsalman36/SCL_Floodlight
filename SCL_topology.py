@@ -16,6 +16,7 @@ from mininet.net import Mininet
 from mininet.topo import Topo
 from mininet.node import RemoteController, OVSSwitch
 from mininet.link import TCLink
+import time
 # from topo import topo2file, FatTree, FatTreeOutBand
 
 class MinimalTopo( Topo ):
@@ -135,9 +136,11 @@ def runMinimalTopo():
 
     # Actually start the network
     net.start()
-
+    # time.sleep(5)
+    # net.cmd(pingall(1)
     # Drop the user in to a CLI so user can run commands.
     CLI( net )
+    # time.sleep(5)
 
     # After the user exits the CLI, shutdown the network.
     net.stop()
