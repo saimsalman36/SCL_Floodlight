@@ -42,7 +42,7 @@ class MinimalTopo( Topo ):
         h015 = self.addHost("h015", ip='10.1.15.1');
 
         # s021 = self.addSwitch("s021", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:21", ip='10.0.21.1');
-        s020 = self.addSwitch("s020", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:20", ip='10.0.0.1');
+        s020 = self.addSwitch("s020", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:14", ip='10.0.0.1');
         s001 = self.addSwitch("s001", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:01", ip='10.0.1.1');
         s002 = self.addSwitch("s002", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:02", ip='10.0.2.1');
         s003 = self.addSwitch("s003", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:03", ip='10.0.3.1');
@@ -52,16 +52,16 @@ class MinimalTopo( Topo ):
         s007 = self.addSwitch("s007", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:07", ip='10.0.7.1');
         s008 = self.addSwitch("s008", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:08", ip='10.0.8.1');
         s009 = self.addSwitch("s009", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:09", ip='10.0.9.1');
-        s010 = self.addSwitch("s010", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:10", ip='10.0.10.1');
-        s011 = self.addSwitch("s011", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:11", ip='10.0.11.1');
-        s012 = self.addSwitch("s012", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:12", ip='10.0.12.1');
-        s013 = self.addSwitch("s013", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:13", ip='10.0.13.1');
-        s014 = self.addSwitch("s014", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:14", ip='10.0.14.1');       
-        s015 = self.addSwitch("s015", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:15", ip='10.0.15.1');
-        s016 = self.addSwitch("s016", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:16", ip='10.0.16.1');
-        s017 = self.addSwitch("s017", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:17", ip='10.0.17.1');
-        s018 = self.addSwitch("s018", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:18", ip='10.0.18.1');
-        s019 = self.addSwitch("s019", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:19", ip='10.0.19.1');
+        s010 = self.addSwitch("s010", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:0a", ip='10.0.10.1');
+        s011 = self.addSwitch("s011", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:0b", ip='10.0.11.1');
+        s012 = self.addSwitch("s012", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:0c", ip='10.0.12.1');
+        s013 = self.addSwitch("s013", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:0d", ip='10.0.13.1');
+        s014 = self.addSwitch("s014", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:0e", ip='10.0.14.1');       
+        s015 = self.addSwitch("s015", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:0f", ip='10.0.15.1');
+        s016 = self.addSwitch("s016", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:10", ip='10.0.16.1');
+        s017 = self.addSwitch("s017", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:11", ip='10.0.17.1');
+        s018 = self.addSwitch("s018", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:12", ip='10.0.18.1');
+        s019 = self.addSwitch("s019", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:13", ip='10.0.19.1');
 
         self.addLink(s004, s020);
         self.addLink(s006, s020);

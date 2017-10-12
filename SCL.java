@@ -202,6 +202,21 @@ class NetworkX {
             }
         }
 
+        Collections.sort(temp,new Comparator<List<String>>() {
+            @Override
+            public int compare(List<String> lhs, List<String> rhs) {
+                for (int i = 0; i < lhs.size(); i++) {
+                    if (lhs.get(i).compareTo(rhs.get(i)) == 0) {
+                        continue;
+                    } else {
+                        return (lhs.get(i).compareTo(rhs.get(i)));
+                    }
+                }
+
+                return 0;
+            }
+        });
+
         return temp;
     }
 
@@ -419,7 +434,7 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
 
         for (String name: this.hosts.keySet()) {
             if (!this.ctrls.contains(name)) {
-                logger.info("Host Added: " + name);
+                // logger.info("Host Added: " + name);
                 this.networkGraph.addNode(name);
             }
         }
@@ -498,8 +513,12 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
     }
 
     public String switchID_to_string(DatapathId switchId) {
-        String temp = switchId.toString().replace(":", "");
-        return ("s" + temp.substring(temp.length()-3,temp.length()));
+        String hexNumber = switchId.toString().replace(":", "");
+        Integer temp = Integer.parseInt(hexNumber, 16);
+
+        if (temp < 10) return "s00" + Integer.toString(temp);
+        if (temp < 100) return "s0" + Integer.toString(temp);
+        return "s" + Integer.toString(temp);
     }
 
     @Override
@@ -518,7 +537,7 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
                                   PortChangeType type) {
         if (type == PortChangeType.DOWN) {
             String swID = switchID_to_string(switchId);
-            logger.info(swID + ':' + port.getName());
+            // logger.info(swID + ':' + port.getName());
             Link lnk = intf2link.get(swID + ':' + port.getName());
 
             String sw1 = lnk.sw1;
@@ -567,9 +586,6 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
             outPort = OFPort.of(lnk.port2);
         }
 
-        // logger.info("Adding Flow -- Adding Flow");
-        // logger.info("Switch: " + switchName + " , Host-1: " + host1 + ", Host-2: " + host2 + ", Outport: " + lnk.port1 + ", Outport: " + lnk.port2 + ",Entered: " + outPort.toString());
-
         Match myMatch = myFactory.buildMatch()
         .setExact(MatchField.ETH_TYPE, EthType.IPv4)
         .setExact(MatchField.IPV4_SRC, nwSRC)
@@ -581,7 +597,7 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
         OFActions actions = myFactory.actions();
 
         OFActionOutput output = actions.buildOutput()
-            .setMaxLen(0xFFFFFFFF)
+            // .setMaxLen(0xFFFFFFFF)
             .setPort(outPort)
             .build();
         actionList.add(output);
@@ -589,26 +605,28 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
         
         //TODO: Solve this hack!
         if (cmd.equals("modify")) {
+        	logger.info("Modify: Switch: " + switchName + " , Host-1: " + host1 + ", Host-2: " + host2 + ", Outport: " + lnk.port1 + ", Outport: " + lnk.port2 + ",Entered: " + outPort.toString());
+
             OFFlowModify flowModify = myFactory.buildFlowModify()
                     .setBufferId(OFBufferId.NO_BUFFER)
                     .setPriority(50000)
                     .setMatch(myMatch)
-                    .setIdleTimeout(10000)
-                    .setHardTimeout(10000)
                     // .setInstructions(myInstructionList)
-                    .setOutPort(OFPort.of(1))
+                    .setOutPort(OFPort.of(65535))
                     .setActions(actionList)
                     // .setTableId(TableId.of(0))
                     .build();
 
             sw.write(flowModify);
         } else if (cmd.equals("delete")) {
+        	logger.info("Delete: Switch: " + switchName + " , Host-1: " + host1 + ", Host-2: " + host2 + ", Outport: " + lnk.port1 + ", Outport: " + lnk.port2 + ",Entered: " + outPort.toString());
+
             OFFlowDelete flowDelete = myFactory.buildFlowDelete()
                     .setBufferId(OFBufferId.NO_BUFFER)
                     .setPriority(50000)
                     .setMatch(myMatch)
                     // .setInstructions(myInstructionList)
-                    .setOutPort(OFPort.of(1))
+                    .setOutPort(OFPort.of(65535))
                     .setActions(actionList)
                     // .setTableId(TableId.of(0))
                     .build();
@@ -622,7 +640,7 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
             return;
         }
 
-        it = updates.get("modify").entrySet().iterator();
+        Iterator it = updates.get("modify").entrySet().iterator();
         
         while (it.hasNext()) {
             Map.Entry pair = (Map.Entry)it.next();
@@ -634,14 +652,13 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
             }
         }
 
-        Iterator it = updates.get("delete").entrySet().iterator();
+        it = updates.get("delete").entrySet().iterator();
 
         while (it.hasNext()) {
             Map.Entry pair = (Map.Entry)it.next();
             String swName = (String) pair.getKey();
             
             for (Triples trp : (List <Triples>) pair.getValue()) {
-            	logger.info("FLOW ENTRY BEING DELETED!!!!");
                 updateFlowEntry(swName, trp.host1, trp.host2, trp.lnk, "delete");
             }
         }
@@ -668,6 +685,7 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
                 if (paths.size() == 0) continue;
 
                 List<String> path = paths.get(current % paths.size());
+                // logger.info("Shortest Path: " + path.toString());
                 current += 1;
 
                 for (int i = 1; i < path.size() - 1; i++) {
@@ -694,7 +712,7 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
                     	this.sw_tables_status.get(sw).get(host1).put(host2, "");
                         updates.get("delete").get(sw).add(new Triples(host1, host2, this.sw_tables.get(sw).get(host1).get(host2)));
                         this.sw_tables.get(sw).get(host1).put(host2, null);
-                    } else if ((this.sw_tables_status.get(sw).get(host1).get(host2).equals("updated")) || (this.sw_tables_status.get(sw).get(host1).get(host2).equals("updated"))) {
+                    } else if ((this.sw_tables_status.get(sw).get(host1).get(host2).equals("checked")) || (this.sw_tables_status.get(sw).get(host1).get(host2).equals("updated"))) {
                     	this.sw_tables_status.get(sw).get(host1).put(host2, "to_be_deleted");
                     }
                 }
@@ -746,12 +764,12 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
 
         // Get the enabled ports and start adding flow entries.
 
-        logger.info("Switch Added -- Now using the ports to update flow entries.");
+        // logger.info("Switch Added -- Now using the ports to update flow entries.");
 
         Collection<OFPort> portCollection = sw.getEnabledPortNumbers();
 
         for (OFPort port : portCollection) {
-            logger.info("PORT -- PORT: " + port.toString());
+            // logger.info("PORT -- PORT: " + port.toString());
             linkService.AddToSuppressLLDPs(switchId, port);
 
             String swID = switchID_to_string(switchId);
@@ -765,7 +783,7 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
             } else if (lnk.sw2.equals(swID)) {
                 lnk.port2 = port.getPortNumber();
             } else {
-                logger.info("WHY IS IT COMING HERE?");
+                // logger.info("WHY IS IT COMING HERE?");
             }
 
             // TODO: Old State Variable
@@ -779,7 +797,6 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
 
                 if (lnk.state2 == 512) {
                     this.networkGraph.addEdge(sw1, sw2);
-                    updateFlowEntries(calShortestRoute());
                 } else {
                     logger.info("WAIT FOR OTHER PORT.");
                 }
@@ -788,13 +805,21 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
 
                 if (lnk.state1 == 512) {
                     this.networkGraph.addEdge(sw1, sw2);
-                    updateFlowEntries(calShortestRoute());
                 } else {
                     logger.info("WAIT FOR OTHER PORT.");
                 }
             }
         }
+
+        logger.info("================================================================");
+        logger.info("================================================================");
+        logger.info("================================================================");
+        updateFlowEntries(calShortestRoute());
+        logger.info("================================================================");
+        logger.info("================================================================");
+        logger.info("================================================================");
     }
+
  
     @Override
     public void startUp(FloodlightModuleContext context) {

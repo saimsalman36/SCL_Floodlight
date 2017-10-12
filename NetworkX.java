@@ -137,6 +137,21 @@ class NetworkX {
             }
         }
 
+        Collections.sort(temp,new Comparator<List<String>>() {
+            @Override
+            public int compare(List<String> lhs, List<String> rhs) {
+                for (int i = 0; i < lhs.size(); i++) {
+                    if (lhs.get(i).compareTo(rhs.get(i)) == 0) {
+                        continue;
+                    } else {
+                        return (lhs.get(i).compareTo(rhs.get(i)));
+                    }
+                }
+
+                return 0;
+            }
+        });
+
         return temp;
     }
 
@@ -263,9 +278,11 @@ class NetworkX {
         graph.addEdge("s009", "s003");
         graph.addEdge("s011", "s003");
 
-        System.out.println(graph.printGraph());
-
+        // System.out.println(graph.printGraph());
+        // List<List<String>> temp1 = graph.printAllPaths("h000", "h001");
         List<List<String>> temp = graph.printAllPaths("h000", "h004");
+        List<List<String>> temp1 = graph.printAllPaths("h001", "h012");
         System.out.println(temp.toString());
+        System.out.println(temp1.toString());
     }
 }
