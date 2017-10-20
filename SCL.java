@@ -723,6 +723,7 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
 
     @Override
     public void switchRemoved(DatapathId switchId) {
+        logger.info("Switch down: " + switchId.toString());
         logger.info("Switch down: " + switchID_to_string(switchId));
 
         String swName = switchID_to_string(switchId);
