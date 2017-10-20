@@ -312,6 +312,8 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
     protected IOFSwitchService switchService;
     protected static Logger logger;
 
+    protected static List<Integer> EventCount;
+
     public void loadTopology(String jsonData) throws IOException{
         JsonParser jsonParser = new JsonFactory().createParser(jsonData);
 
@@ -477,11 +479,14 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
         swToConn = new HashMap<String, IOFSwitch>();
         sw_tables = new HashMap<String, Map<String, Map<String, Link>>>();
         sw_tables_status = new HashMap<String, Map<String, Map<String, String>>>();
+        EventCount = new ArrayList<Integer>(6);
+
+        for (int i = 0; i < 6; i++) EventCount.set(i,0);
 
         try {
-            // String fmJson = "{\"switches\": {\"s018\": \"10.0.18.1\", \"s019\": \"10.0.19.1\", \"s012\": \"10.0.12.1\", \"s013\": \"10.0.13.1\", \"s010\": \"10.0.10.1\", \"s011\": \"10.0.11.1\", \"s016\": \"10.0.16.1\", \"s017\": \"10.0.17.1\", \"s014\": \"10.0.14.1\", \"s015\": \"10.0.15.1\", \"s005\": \"10.0.5.1\", \"s004\": \"10.0.4.1\", \"s007\": \"10.0.7.1\", \"s006\": \"10.0.6.1\", \"s001\": \"10.0.1.1\", \"s020\": \"10.0.0.1\", \"s003\": \"10.0.3.1\", \"s002\": \"10.0.2.1\", \"s009\": \"10.0.9.1\", \"s008\": \"10.0.8.1\"}, \"hosts\": {\"h014\": \"10.1.14.1\", \"h008\": \"10.1.8.1\", \"h009\": \"10.1.9.1\", \"h004\": \"10.1.4.1\", \"h005\": \"10.1.5.1\", \"h006\": \"10.1.6.1\", \"h007\": \"10.1.7.1\", \"h000\": \"10.1.0.1\", \"h001\": \"10.1.1.1\", \"h002\": \"10.1.2.1\", \"h003\": \"10.1.3.1\", \"h011\": \"10.1.11.1\", \"h012\": \"10.1.12.1\", \"h013\": \"10.1.13.1\", \"h010\": \"10.1.10.1\", \"h015\": \"10.1.15.1\"}, \"links\": [[\"s011\", \"s011-eth1\", 1, \"s002\", \"s002-eth4\", 4], [\"s005\", \"s005-eth4\", 4, \"s013\", \"s013-eth2\", 2], [\"s007\", \"s007-eth2\", 2, \"s003\", \"s003-eth2\", 2], [\"s009\", \"s009-eth1\", 1, \"s002\", \"s002-eth3\", 3], [\"s006\", \"s006-eth1\", 1, \"s020\", \"s020-eth2\", 2], [\"s010\", \"s010-eth1\", 1, \"s020\", \"s020-eth4\", 4], [\"s017\", \"s017-eth3\", 3, \"h010\", \"h010-eth0\", 1], [\"s011\", \"s011-eth4\", 4, \"s019\", \"s019-eth2\", 2], [\"s005\", \"s005-eth2\", 2, \"s003\", \"s003-eth1\", 1], [\"s007\", \"s007-eth4\", 4, \"s015\", \"s015-eth2\", 2], [\"s011\", \"s011-eth2\", 2, \"s003\", \"s003-eth4\", 4], [\"s008\", \"s008-eth3\", 3, \"s016\", \"s016-eth1\", 1], [\"s008\", \"s008-eth4\", 4, \"s017\", \"s017-eth1\", 1], [\"s008\", \"s008-eth1\", 1, \"s020\", \"s020-eth3\", 3], [\"s010\", \"s010-eth2\", 2, \"s001\", \"s001-eth4\", 4], [\"s004\", \"s004-eth1\", 1, \"s020\", \"s020-eth1\", 1], [\"s015\", \"s015-eth3\", 3, \"h006\", \"h006-eth0\", 1], [\"s010\", \"s010-eth4\", 4, \"s019\", \"s019-eth1\", 1], [\"s009\", \"s009-eth4\", 4, \"s017\", \"s017-eth2\", 2], [\"s014\", \"s014-eth4\", 4, \"h005\", \"h005-eth0\", 1], [\"s006\", \"s006-eth4\", 4, \"s015\", \"s015-eth1\", 1], [\"s005\", \"s005-eth3\", 3, \"s012\", \"s012-eth2\", 2], [\"s005\", \"s005-eth1\", 1, \"s002\", \"s002-eth1\", 1], [\"s014\", \"s014-eth3\", 3, \"h004\", \"h004-eth0\", 1], [\"s011\", \"s011-eth3\", 3, \"s018\", \"s018-eth2\", 2], [\"s013\", \"s013-eth3\", 3, \"h002\", \"h002-eth0\", 1], [\"s004\", \"s004-eth3\", 3, \"s012\", \"s012-eth1\", 1], [\"s016\", \"s016-eth4\", 4, \"h009\", \"h009-eth0\", 1], [\"s018\", \"s018-eth4\", 4, \"h013\", \"h013-eth0\", 1], [\"s008\", \"s008-eth2\", 2, \"s001\", \"s001-eth3\", 3], [\"s006\", \"s006-eth3\", 3, \"s014\", \"s014-eth1\", 1], [\"s009\", \"s009-eth2\", 2, \"s003\", \"s003-eth3\", 3], [\"s019\", \"s019-eth3\", 3, \"h014\", \"h014-eth0\", 1], [\"s004\", \"s004-eth2\", 2, \"s001\", \"s001-eth1\", 1], [\"s006\", \"s006-eth2\", 2, \"s001\", \"s001-eth2\", 2], [\"s010\", \"s010-eth3\", 3, \"s018\", \"s018-eth1\", 1], [\"s009\", \"s009-eth3\", 3, \"s016\", \"s016-eth2\", 2], [\"s012\", \"s012-eth3\", 3, \"h000\", \"h000-eth0\", 1], [\"s012\", \"s012-eth4\", 4, \"h001\", \"h001-eth0\", 1], [\"s018\", \"s018-eth3\", 3, \"h012\", \"h012-eth0\", 1], [\"s007\", \"s007-eth1\", 1, \"s002\", \"s002-eth2\", 2], [\"s004\", \"s004-eth4\", 4, \"s013\", \"s013-eth1\", 1], [\"s007\", \"s007-eth3\", 3, \"s014\", \"s014-eth2\", 2], [\"s017\", \"s017-eth4\", 4, \"h011\", \"h011-eth0\", 1]], \"ctrls\": [\"h003\", \"h007\", \"h008\", \"h015\"]}";
+            String fmJson = "{\"switches\": {\"s018\": \"10.0.18.1\", \"s019\": \"10.0.19.1\", \"s012\": \"10.0.12.1\", \"s013\": \"10.0.13.1\", \"s010\": \"10.0.10.1\", \"s011\": \"10.0.11.1\", \"s016\": \"10.0.16.1\", \"s017\": \"10.0.17.1\", \"s014\": \"10.0.14.1\", \"s015\": \"10.0.15.1\", \"s005\": \"10.0.5.1\", \"s004\": \"10.0.4.1\", \"s007\": \"10.0.7.1\", \"s006\": \"10.0.6.1\", \"s001\": \"10.0.1.1\", \"s020\": \"10.0.0.1\", \"s003\": \"10.0.3.1\", \"s002\": \"10.0.2.1\", \"s009\": \"10.0.9.1\", \"s008\": \"10.0.8.1\"}, \"hosts\": {\"h014\": \"10.1.14.1\", \"h008\": \"10.1.8.1\", \"h009\": \"10.1.9.1\", \"h004\": \"10.1.4.1\", \"h005\": \"10.1.5.1\", \"h006\": \"10.1.6.1\", \"h007\": \"10.1.7.1\", \"h000\": \"10.1.0.1\", \"h001\": \"10.1.1.1\", \"h002\": \"10.1.2.1\", \"h003\": \"10.1.3.1\", \"h011\": \"10.1.11.1\", \"h012\": \"10.1.12.1\", \"h013\": \"10.1.13.1\", \"h010\": \"10.1.10.1\", \"h015\": \"10.1.15.1\"}, \"links\": [[\"s011\", \"s011-eth1\", 1, \"s002\", \"s002-eth4\", 4], [\"s005\", \"s005-eth4\", 4, \"s013\", \"s013-eth2\", 2], [\"s007\", \"s007-eth2\", 2, \"s003\", \"s003-eth2\", 2], [\"s009\", \"s009-eth1\", 1, \"s002\", \"s002-eth3\", 3], [\"s006\", \"s006-eth1\", 1, \"s020\", \"s020-eth2\", 2], [\"s010\", \"s010-eth1\", 1, \"s020\", \"s020-eth4\", 4], [\"s017\", \"s017-eth3\", 3, \"h010\", \"h010-eth0\", 1], [\"s011\", \"s011-eth4\", 4, \"s019\", \"s019-eth2\", 2], [\"s005\", \"s005-eth2\", 2, \"s003\", \"s003-eth1\", 1], [\"s007\", \"s007-eth4\", 4, \"s015\", \"s015-eth2\", 2], [\"s011\", \"s011-eth2\", 2, \"s003\", \"s003-eth4\", 4], [\"s008\", \"s008-eth3\", 3, \"s016\", \"s016-eth1\", 1], [\"s008\", \"s008-eth4\", 4, \"s017\", \"s017-eth1\", 1], [\"s008\", \"s008-eth1\", 1, \"s020\", \"s020-eth3\", 3], [\"s010\", \"s010-eth2\", 2, \"s001\", \"s001-eth4\", 4], [\"s004\", \"s004-eth1\", 1, \"s020\", \"s020-eth1\", 1], [\"s015\", \"s015-eth3\", 3, \"h006\", \"h006-eth0\", 1], [\"s010\", \"s010-eth4\", 4, \"s019\", \"s019-eth1\", 1], [\"s009\", \"s009-eth4\", 4, \"s017\", \"s017-eth2\", 2], [\"s014\", \"s014-eth4\", 4, \"h005\", \"h005-eth0\", 1], [\"s006\", \"s006-eth4\", 4, \"s015\", \"s015-eth1\", 1], [\"s005\", \"s005-eth3\", 3, \"s012\", \"s012-eth2\", 2], [\"s005\", \"s005-eth1\", 1, \"s002\", \"s002-eth1\", 1], [\"s014\", \"s014-eth3\", 3, \"h004\", \"h004-eth0\", 1], [\"s011\", \"s011-eth3\", 3, \"s018\", \"s018-eth2\", 2], [\"s013\", \"s013-eth3\", 3, \"h002\", \"h002-eth0\", 1], [\"s004\", \"s004-eth3\", 3, \"s012\", \"s012-eth1\", 1], [\"s016\", \"s016-eth4\", 4, \"h009\", \"h009-eth0\", 1], [\"s018\", \"s018-eth4\", 4, \"h013\", \"h013-eth0\", 1], [\"s008\", \"s008-eth2\", 2, \"s001\", \"s001-eth3\", 3], [\"s006\", \"s006-eth3\", 3, \"s014\", \"s014-eth1\", 1], [\"s009\", \"s009-eth2\", 2, \"s003\", \"s003-eth3\", 3], [\"s019\", \"s019-eth3\", 3, \"h014\", \"h014-eth0\", 1], [\"s004\", \"s004-eth2\", 2, \"s001\", \"s001-eth1\", 1], [\"s006\", \"s006-eth2\", 2, \"s001\", \"s001-eth2\", 2], [\"s010\", \"s010-eth3\", 3, \"s018\", \"s018-eth1\", 1], [\"s009\", \"s009-eth3\", 3, \"s016\", \"s016-eth2\", 2], [\"s012\", \"s012-eth3\", 3, \"h000\", \"h000-eth0\", 1], [\"s012\", \"s012-eth4\", 4, \"h001\", \"h001-eth0\", 1], [\"s018\", \"s018-eth3\", 3, \"h012\", \"h012-eth0\", 1], [\"s007\", \"s007-eth1\", 1, \"s002\", \"s002-eth2\", 2], [\"s004\", \"s004-eth4\", 4, \"s013\", \"s013-eth1\", 1], [\"s007\", \"s007-eth3\", 3, \"s014\", \"s014-eth2\", 2], [\"s017\", \"s017-eth4\", 4, \"h011\", \"h011-eth0\", 1]], \"ctrls\": [\"h003\", \"h007\", \"h008\", \"h015\"]}";
             // String fmJson = "{\"switches\": {\"s004\": \"10.0.1.1\",\"s002\": \"10.0.0.1\",\"s003\": \"10.0.3.1\",\"s001\": \"10.0.2.1\"},\"hosts\": {\"h004\": \"10.0.0.5\",\"h005\": \"10.0.0.6\",\"h006\": \"10.0.0.7\",\"h007\": \"10.0.0.8\",\"h000\": \"10.0.0.1\",\"h001\": \"10.0.0.2\",\"h002\": \"10.0.0.3\",\"h003\": \"10.0.0.4\"},\"links\": [[\"s001\",\"s001-eth1\",2,\"s002\",\"s002-eth1\",2],[\"s001\",\"s001-eth2\",3,\"s003\",\"s003-eth1\",2],[\"s001\",\"s001-eth3\",4,\"s004\",\"s004-eth1\",2],[\"s002\",\"s002-eth2\",3,\"s003\",\"s003-eth2\",4],[\"s002\",\"s002-eth3\",4,\"s004\",\"s004-eth2\",3],[\"s003\",\"s003-eth3\",4,\"s004\",\"s004-eth3\",4],[\"s001\",\"s001-eth4\",5,\"h000\",\"h000-eth0\",2],[\"s001\",\"s001-eth5\",6,\"h001\",\"h001-eth0\",1],[\"s002\",\"s002-eth4\",5,\"h002\",\"h002-eth0\",1],[\"s003\",\"s003-eth4\",5,\"h004\",\"h004-eth0\",1],[\"s003\",\"s003-eth5\",6,\"h005\",\"h005-eth0\",1],[\"s004\",\"s004-eth4\",5,\"h006\",\"h006-eth0\",1]],\"ctrls\": [\"h003\",\"h007\"]}";
-            String fmJson = new String(Files.readAllBytes(Paths.get("/home/saimsalman/Desktop/SCL/scl/conf/fattree_inband.json")));
+            // String fmJson = new String(Files.readAllBytes(Paths.get("/home/saimsalman/Desktop/SCL/scl/conf/fattree_inband.json")));
             loadTopology(fmJson);    
         } catch (IOException e) {
             logger.info("FAILED");
@@ -535,14 +540,41 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
     public void switchPortChanged(DatapathId switchId,
                                   OFPortDesc port,
                                   PortChangeType type) {
-        if (type == PortChangeType.DOWN) {
-            String swID = switchID_to_string(switchId);
-            // logger.info(swID + ':' + port.getName());
-            Link lnk = intf2link.get(swID + ':' + port.getName());
 
-            String sw1 = lnk.sw1;
-            String sw2 = lnk.sw2;
-       
+        String swID = switchID_to_string(switchId);
+        Link lnk = intf2link.get(swID + ':' + port.getName());
+        logger.info("Port-" + type.toString() + ": " + swID + ':' + port.getName());
+
+        String sw1 = lnk.sw1;
+        String sw2 = lnk.sw2;
+
+        if (type == PortChangeType.UP) {
+            EventCount.set(2, EventCount.get(2) + 1);
+
+            if (sw1.equals(swID)) {
+                lnk.state1 = 512;
+
+                if (lnk.state2 == 1) {
+                    return;
+                } else {
+                    networkGraph.addEdge(sw1, sw2);
+                    updateFlowEntries(calShortestRoute());
+                }
+            } else if (sw2.equals(swID)) {
+                lnk.state2 = 512;
+
+                if (lnk.state1 == 1) {
+                    return;
+                } else {
+                    networkGraph.addEdge(sw1, sw2);
+                    updateFlowEntries(calShortestRoute());
+                }
+            }
+        }
+
+        if (type == PortChangeType.DOWN) {
+            EventCount.set(3, EventCount.get(3) + 1);
+
             if (sw1.equals(swID)) {
                 lnk.state1 = 1;
 
@@ -563,6 +595,8 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
                 }
             }
         }
+
+        logger.info("Event Count: " + EventCount.toString());
     }
 
     @Override
@@ -605,7 +639,7 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
         
         //TODO: Solve this hack!
         if (cmd.equals("modify")) {
-        	logger.info("Modify: Switch: " + switchName + " , Host-1: " + host1 + ", Host-2: " + host2 + ", Outport: " + lnk.port1 + ", Outport: " + lnk.port2 + ",Entered: " + outPort.toString());
+        	// logger.info("Modify: Switch: " + switchName + " , Host-1: " + host1 + ", Host-2: " + host2 + ", Outport: " + lnk.port1 + ", Outport: " + lnk.port2 + ",Entered: " + outPort.toString());
 
             OFFlowModify flowModify = myFactory.buildFlowModify()
                     .setBufferId(OFBufferId.NO_BUFFER)
@@ -619,7 +653,7 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
 
             sw.write(flowModify);
         } else if (cmd.equals("delete")) {
-        	logger.info("Delete: Switch: " + switchName + " , Host-1: " + host1 + ", Host-2: " + host2 + ", Outport: " + lnk.port1 + ", Outport: " + lnk.port2 + ",Entered: " + outPort.toString());
+        	// logger.info("Delete: Switch: " + switchName + " , Host-1: " + host1 + ", Host-2: " + host2 + ", Outport: " + lnk.port1 + ", Outport: " + lnk.port2 + ",Entered: " + outPort.toString());
 
             OFFlowDelete flowDelete = myFactory.buildFlowDelete()
                     .setBufferId(OFBufferId.NO_BUFFER)
@@ -641,6 +675,8 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
         }
 
         Iterator it = updates.get("modify").entrySet().iterator();
+        logger.info("Flows Modified: " + updates.get("modify").entrySet().size());
+        EventCount.set(4, EventCount.get(4) + updates.get("modify").entrySet().size());
         
         while (it.hasNext()) {
             Map.Entry pair = (Map.Entry)it.next();
@@ -653,6 +689,8 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
         }
 
         it = updates.get("delete").entrySet().iterator();
+        logger.info("Flows Deleted: " + updates.get("delete").entrySet().size());
+        EventCount.set(5, EventCount.get(5) + updates.get("delete").entrySet().size());
 
         while (it.hasNext()) {
             Map.Entry pair = (Map.Entry)it.next();
@@ -662,6 +700,8 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
                 updateFlowEntry(swName, trp.host1, trp.host2, trp.lnk, "delete");
             }
         }
+
+        logger.info("Event Count: " + EventCount.toString());
     }
 
     public Map<String, Map<String, List<Triples>>> calShortestRoute() {
@@ -723,8 +763,8 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
 
     @Override
     public void switchRemoved(DatapathId switchId) {
-        logger.info("Switch down: " + switchId.toString());
         logger.info("Switch down: " + switchID_to_string(switchId));
+        EventCount.set(1, EventCount.get(1) + 1);
 
         String swName = switchID_to_string(switchId);
 
@@ -741,11 +781,14 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
             if (swName.equals(lnk.sw2)) lnk.state2 = 1; // TODO: REPLACE THESE NUMBERS WITH FLOODLLIGHT CONSTS.
         }
         updateFlowEntries(calShortestRoute());
+
+        logger.info("Event Count: " + EventCount.toString());
     }
 
     @Override
     public void switchAdded(DatapathId switchId) {
-        logger.info("Switch up: " + switchId.toString());
+        logger.info("Switch up: " + switchID_to_string(switchId));
+        EventCount.set(0, EventCount.get(0) + 1);
 
         String swName = switchID_to_string(switchId);
 
@@ -811,14 +854,8 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
                 }
             }
         }
-
-        logger.info("================================================================");
-        logger.info("================================================================");
-        logger.info("================================================================");
         updateFlowEntries(calShortestRoute());
-        logger.info("================================================================");
-        logger.info("================================================================");
-        logger.info("================================================================");
+        logger.info("Event Count: " + EventCount.toString());
     }
 
  
