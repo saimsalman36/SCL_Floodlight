@@ -5,6 +5,7 @@ from conf.const import RECV_BUF_SIZE, TE_VENDOR
 from socket_utils import *
 import libopenflow_01 as of
 import scl_protocol as scl
+import time
 
 ECHO_TIMEOUT = 10
 
@@ -25,6 +26,9 @@ def make_type_to_unpacker_table():
 
 unpackers = make_type_to_unpacker_table()
 
+def handle_PACKET_OUT(scl,conn,msg):
+    pass
+
 def handle_VENDOR(scl, conn, msg):
     # TODO
     scl.logger.debug('ofp_handshake: vendor_message received')
@@ -32,11 +36,10 @@ def handle_VENDOR(scl, conn, msg):
     reply = of.ofp_vendor_generic(vendor=msg.vendor, data='\x00\x00\x00\x0b\x00\x00\x00\x01')
     reply.xid = msg.xid
     reply.vendor = msg.vendor
-    scl.logger.debug(reply.show())
-    reply.datapath_id = scl.streams.agent_list.index(id2str(conn.conn_id))
     scl.streams.upstreams[conn.conn_id].put(reply.pack())
 
 def handle_STATS_REQUEST(scl, conn, msg):
+    scl.logger.debug('ofp_handshake: stats_request received')
     if msg.type == of.OFPST_DESC:
         reply = of.ofp_stats_reply()
         reply.body = of.ofp_desc_stats(mfr_desc="Nicira, Inc.",
@@ -47,16 +50,15 @@ def handle_STATS_REQUEST(scl, conn, msg):
         reply.type = of.OFPST_DESC
         reply.body = reply.body.pack()
         reply.xid = msg.xid
-        reply.datapath_id = scl.streams.agent_list.index(id2str(conn.conn_id))
         scl.streams.upstreams[conn.conn_id].put(reply.pack())
     else:
         scl.logger.debug("GETTING OTHER STATISTICS REQUEST FROM FLOODLIGHT.")
 
 def handle_GET_CONFIG_REQUEST(scl, conn, msg):
     scl.logger.debug('ofp_handshake: get_config_request received')
-    reply = of.ofp_get_config_reply()    
-    reply.xid = msg.xid
-    reply.datapath_id = scl.streams.agent_list.index(id2str(conn.conn_id))
+    reply = of.ofp_get_config_reply()
+    # reply.xid = msg.xid
+    reply.miss_send_len = 65535
     scl.streams.upstreams[conn.conn_id].put(reply.pack())
 
 def handle_HELLO(scl, conn, msg):
@@ -82,27 +84,24 @@ def handle_ECHO_REQUEST(scl, conn, msg):
 
 def handle_FEATURES_REQUEST(scl, conn, msg):
     scl.logger.debug('ofp_handshake: features_request received')
+    # scl.logger.debug(msg)
     reply = of.ofp_features_reply()
     reply.xid = msg.xid
     reply.datapath_id = scl.streams.agent_list.index(id2str(conn.conn_id))
+    s = reply.pack()
     scl.streams.upstreams[conn.conn_id].put(reply.pack())
 
 def handle_SET_CONFIG(scl, conn, msg):
     pass
 
 def handle_FLOW_MOD(scl2ctrl, conn, msg):
-    scl2ctrl.logger.debug('ofp_flow_mod')
+    # scl2ctrl.logger.debug("FLOW Print: " + str(msg))
+    # scl2ctrl.logger.debug('ofp_flow_mod: ' + msg)
     if scl2ctrl.streams.ofp_connected[conn.conn_id]:
-        scl2ctrl.logger.debug('Point -- 1')
         # put msg and corresponding scl header into downstreams
         scl2ctrl.streams.downstreams[conn.conn_id].put([msg.pack(), scl.SCLT_OF_PROXY])
-        scl2ctrl.logger.debug('Point -- 2')
         # maintain the whole dataplane flow tables
-        scl2ctrl.logger.debug(scl2ctrl.streams)
-        scl2ctrl.logger.debug(scl2ctrl.streams.flow_table_db)
-        scl2ctrl.logger.debug(conn.conn_id)
         scl2ctrl.streams.flow_table_db.ofp_msg_update(conn.conn_id, msg)
-        scl2ctrl.logger.debug('Point -- 3')
 
 def handle_BARRIER_REQUEST(scl, conn, msg):
     reply = msg
@@ -131,6 +130,7 @@ handlerMap = {
     of.OFPT_FEATURES_REQUEST : handle_FEATURES_REQUEST,
     of.OFPT_GET_CONFIG_REQUEST: handle_GET_CONFIG_REQUEST,
     of.OFPT_SET_CONFIG : handle_SET_CONFIG,
+    of.OFPT_PACKET_OUT : handle_PACKET_OUT,
     of.OFPT_FLOW_MOD : handle_FLOW_MOD,
     of.OFPT_STATS_REQUEST : handle_STATS_REQUEST,
     of.OFPT_BARRIER_REQUEST : handle_BARRIER_REQUEST,
@@ -351,7 +351,7 @@ class Scl2Ctrl(object):
         self.timer = timer
         self.inputs = []
         self.outputs = []
-        self.logger.debug(handlerMap)
+        # self.logger.debug(handlerMap)
         _set_handlers()
 
     def open(self, conn_id):
@@ -442,11 +442,7 @@ class Scl2Ctrl(object):
 
             # handle ofp msg
             try:
-                if ofp_type == 13:
-                    self.logger.debug(msg)
-                    self.logger.debug(msg.__dict__)
                 h = handlers[ofp_type]
-                self.logger.debug(h)
                 h(self, conn, msg)
             except Exception, e:
                 self.logger.error(
@@ -548,7 +544,7 @@ class Scl2Scl(object):
         ret = self.streams.link_log.update(switch, link, version, state)
         if ret:
             self.streams.upcall_link_status(ret[0], ret[1], ret[2])
-        self.logger.info(
+        self.logger.debug(
                 '%s, %s, version: %d, state: %s' % (
                     switch, link, version, state))
 
@@ -637,7 +633,11 @@ class Scl2Scl(object):
         elif sclt is scl.SCLT_GOSSIP_SYN:
             self.handle_gossip_syn_msg(conn_id, msg)
         elif sclt is scl.SCLT_GOSSIP_ACK:
-            self.handle_gossip_ack_msg(conn_id, msg)
+            try:
+                self.handle_gossip_ack_msg(conn_id, msg)
+            except Exception as E:
+                print "Exception Thrown: " + str(E)
+                pass
 
     def send_raw(self, msg, sclt, dst_addr):
         return
@@ -666,6 +666,8 @@ class Scl2Scl(object):
         if self.timer.time_up and self.timer.flow_table_rqst_count == 3:
             self.logger.debug('current flow tables status:\n%s' % (
                 self.streams.flow_table_db.show()))
+            temp = self.streams.flow_table_db.flow_tables_diff()
+            self.logger.info("SAIM: Updating Flow Entries: " + str(len(temp)))
             for conn_id, msgs in self.streams.flow_table_db.flow_tables_diff().iteritems():
                 if msgs:
                     self.logger.debug('update flow_mod msg to ensure consistency:'
@@ -710,7 +712,10 @@ class Scl2SclUdp(Scl2Scl):
         self.udp_flood = UdpFloodListener('', scl_proxy_port, scl_agent_port)
 
     def send_raw(self, msg, sclt, dst_addr):
-        self.udp_flood.send(scl.scl_udp_pack(msg, sclt, self.addr, dst_addr))
+    	try:
+        	self.udp_flood.send(scl.scl_udp_pack(msg, sclt, self.addr, dst_addr))
+        except Exception as E:
+        	pass
 
     def wait(self, selector):
         if not self.streams.downstreams_empty():
