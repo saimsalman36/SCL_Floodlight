@@ -684,12 +684,7 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
 
         if (sw == null) return;
 
-        OFFlowMod.Builder fmb;
-        if (cmd.equals("modify")) {
-            fmb = sw.getOFFactory().buildFlowModify(); 
-        } else {
-            fmb = sw.getOFFactory().buildFlowDelete();
-        }
+        OFFlowMod.Builder fmb = sw.getOFFactory().buildFlowDelete();
 
         OFActionOutput.Builder aob = sw.getOFFactory().actions().buildOutput();
         List<OFAction> actions = new ArrayList<OFAction>();
@@ -711,16 +706,29 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
         .setExact(MatchField.IPV4_SRC, nwSRC)
         .setExact(MatchField.IPV4_DST, nwDST);
 
-        actions.add(aob.setPort(outPort).build());
+        actions.add(aob.setPort(outPort).setMaxLen(0xffFFffFF).build());
 
         fmb.setMatch(mb.build())
         .setBufferId(OFBufferId.NO_BUFFER)
-        .setOutPort(OFPort.of(65535))
-        .setPriority(50000);
+        // .setOutPort(OFPort.of(0))
+        .setPriority(50000)
+        .setTableId(TableId.of(0));
 
         FlowModUtils.setActions(fmb, actions, sw);
-        OFMessageDamper messageDamper = new  OFMessageDamper(10000, EnumSet.of(OFType.FLOW_MOD), 1000);
-        messageDamper.write(sw, fmb.build());
+        sw.write(fmb.build());
+
+        if (cmd.equals("modify")) {
+            fmb = sw.getOFFactory().buildFlowAdd();
+
+            fmb.setMatch(mb.build())
+            .setBufferId(OFBufferId.NO_BUFFER)
+            // .setOutPort(OFPort.of(0))
+            .setPriority(50000)
+            .setTableId(TableId.of(0));
+
+            FlowModUtils.setActions(fmb, actions, sw);
+            sw.write(fmb.build());
+        }
     }
 
     public void updateFlowEntries(Map<String, Map<String, List<Triples>>> updates) {
