@@ -184,105 +184,203 @@ class NetworkX {
     }
 
     public static void main(String[] args) {
-        NetworkX graph = new NetworkX();
+    	NetworkX graph = new NetworkX();
 
-        graph.addNode("h000");
-        graph.addNode("h001");
-        graph.addNode("h002");
-        graph.addNode("h003");
-        graph.addNode("h004");
-        graph.addNode("h005");
-        graph.addNode("h006");
-        graph.addNode("h007");
-        graph.addNode("h008");
-        graph.addNode("h009");
-        graph.addNode("h010");
-        graph.addNode("h011");
-        graph.addNode("h012");
-        graph.addNode("h013");
-        graph.addNode("h014");
-        graph.addNode("h015");
+    	graph.addNode("s000");
+    	graph.addNode("s001");
+    	graph.addNode("s002");
+    	graph.addNode("s003");
+    	graph.addNode("s004");
+    	graph.addNode("s005");
+    	graph.addNode("s006");
+    	graph.addNode("s007");
 
-        graph.addNode("s000");
-        graph.addNode("s001");
-        graph.addNode("s002");
-        graph.addNode("s003");
-        graph.addNode("s004");
-        graph.addNode("s005");
-        graph.addNode("s006");
-        graph.addNode("s007");
-        graph.addNode("s008");
-        graph.addNode("s009");
-        graph.addNode("s010");
-        graph.addNode("s011");
-        graph.addNode("s012");
-        graph.addNode("s013");
-        graph.addNode("s014");       
-        graph.addNode("s015");
-        graph.addNode("s016");
-        graph.addNode("s017");
-        graph.addNode("s018");
-        graph.addNode("s019");
+    	graph.addNode("h001");
+    	graph.addNode("h002");
+    	graph.addNode("h003");
+    	graph.addNode("h004");
+    	graph.addNode("h005");
+    	graph.addNode("h006");
+    	graph.addNode("h007");
+    	graph.addNode("h008");
+    	graph.addNode("h009");
+    	graph.addNode("h010");
+    	graph.addNode("h011");
+    	graph.addNode("h012");
+    	graph.addNode("h013");
+    	graph.addNode("h014");
+    	graph.addNode("h015");
+    	graph.addNode("h016");
 
-        graph.addEdge("h000", "s012");
-        graph.addEdge("h001", "s012");
-        graph.addEdge("h002", "s013");
-        graph.addEdge("h003", "s013");
-        graph.addEdge("h004", "s014");
-        graph.addEdge("h005", "s014");
-        graph.addEdge("h006", "s015");
-        graph.addEdge("h007", "s015");
-        graph.addEdge("h008", "s016");
-        graph.addEdge("h009", "s016");
-        graph.addEdge("h010", "s017");
-        graph.addEdge("h011", "s017");
-        graph.addEdge("h012", "s018");
-        graph.addEdge("h013", "s018");
-        graph.addEdge("h014", "s019");
-        graph.addEdge("h015", "s019");
+    	graph.addEdge("s000", "h001");
+    	graph.addEdge("s000", "h002");
+    	graph.addEdge("s001", "h003");
+    	graph.addEdge("s001", "h004");
+    	graph.addEdge("s002", "h005");
+    	graph.addEdge("s002", "h006");
+    	graph.addEdge("s003", "h007");
+    	graph.addEdge("s003", "h008");
+    	graph.addEdge("s004", "h009");
+    	graph.addEdge("s004", "h010");
+    	graph.addEdge("s005", "h011");
+    	graph.addEdge("s005", "h012");
+    	graph.addEdge("s006", "h013");
+    	graph.addEdge("s006", "h014");
+    	graph.addEdge("s007", "h015");
+    	graph.addEdge("s007", "h016");
 
-        graph.addEdge("s012", "s004");
-        graph.addEdge("s013", "s004");
-        graph.addEdge("s012", "s005");
-        graph.addEdge("s013", "s005");
-        graph.addEdge("s014", "s006");
-        graph.addEdge("s015", "s006");
-        graph.addEdge("s014", "s007");
-        graph.addEdge("s015", "s007");
-        graph.addEdge("s016", "s008");
-        graph.addEdge("s017", "s008");
-        graph.addEdge("s016", "s009");
-        graph.addEdge("s017", "s009");
-        graph.addEdge("s018", "s010");
-        graph.addEdge("s019", "s010");
-        graph.addEdge("s018", "s011");
-        graph.addEdge("s019", "s011");
+    	graph.addEdge("s000", "s001");
+    	graph.addEdge("s001", "s002");
+    	graph.addEdge("s002", "s003");
+    	graph.addEdge("s003", "s000");
 
-        graph.addEdge("s004", "s000");
-        graph.addEdge("s006", "s000");
-        graph.addEdge("s008", "s000");
-        graph.addEdge("s010", "s000");
+    	graph.addEdge("s001", "s006");
+    	graph.addEdge("s006", "s003");
+    	graph.addEdge("s003", "s004");
+    	graph.addEdge("s004", "s001");
 
-        graph.addEdge("s004", "s001");
-        graph.addEdge("s006", "s001");
-        graph.addEdge("s008", "s001");
-        graph.addEdge("s010", "s001");
+    	graph.addEdge("s007", "s004");
+    	graph.addEdge("s004", "s005");
+    	graph.addEdge("s005", "s006");
+    	graph.addEdge("s006", "s007");
 
-        graph.addEdge("s005", "s002");
-        graph.addEdge("s007", "s002");
-        graph.addEdge("s009", "s002");
-        graph.addEdge("s011", "s002");
+    	graph.addEdge("s007", "s000");
+    	graph.addEdge("s000", "s005");
+    	graph.addEdge("s005", "s006");
+    	graph.addEdge("s006", "s007");
 
-        graph.addEdge("s005", "s003");
-        graph.addEdge("s007", "s003");
-        graph.addEdge("s009", "s003");
-        graph.addEdge("s011", "s003");
+    	List<String> tempHosts = new ArrayList<String>();
 
-        // System.out.println(graph.printGraph());
-        // List<List<String>> temp1 = graph.printAllPaths("h000", "h001");
-        List<List<String>> temp = graph.printAllPaths("h000", "h004");
-        List<List<String>> temp1 = graph.printAllPaths("h001", "h012");
-        System.out.println(temp.toString());
-        System.out.println(temp1.toString());
+    	tempHosts.add("h001");
+    	tempHosts.add("h002");
+    	tempHosts.add("h003");
+    	tempHosts.add("h004");
+    	tempHosts.add("h005");
+    	tempHosts.add("h006");
+    	tempHosts.add("h007");
+    	tempHosts.add("h008");
+    	tempHosts.add("h009");
+    	tempHosts.add("h010");
+    	tempHosts.add("h011");
+    	tempHosts.add("h012");
+    	tempHosts.add("h013");
+    	tempHosts.add("h014");
+    	tempHosts.add("h015");
+    	tempHosts.add("h016");
+
+    	for (String host1 : tempHosts) {
+    		for (String host2: tempHosts) {
+    			if (host1.equals(host2)) continue;
+
+    			System.out.println(graph.printAllPaths(host1, host2).toString());
+    		}
+    	}
+
+    	// List<List<String>> temp = graph.printAllPaths("h001", "h014");
+    	// System.out.println(temp.toString());
+
     }
+
+    // public static void main(String[] args) {
+    //     NetworkX graph = new NetworkX();
+
+    //     graph.addNode("h000");
+    //     graph.addNode("h001");
+    //     graph.addNode("h002");
+    //     graph.addNode("h003");
+    //     graph.addNode("h004");
+    //     graph.addNode("h005");
+    //     graph.addNode("h006");
+    //     graph.addNode("h007");
+    //     graph.addNode("h008");
+    //     graph.addNode("h009");
+    //     graph.addNode("h010");
+    //     graph.addNode("h011");
+    //     graph.addNode("h012");
+    //     graph.addNode("h013");
+    //     graph.addNode("h014");
+    //     graph.addNode("h015");
+
+    //     graph.addNode("s000");
+    //     graph.addNode("s001");
+    //     graph.addNode("s002");
+    //     graph.addNode("s003");
+    //     graph.addNode("s004");
+    //     graph.addNode("s005");
+    //     graph.addNode("s006");
+    //     graph.addNode("s007");
+    //     graph.addNode("s008");
+    //     graph.addNode("s009");
+    //     graph.addNode("s010");
+    //     graph.addNode("s011");
+    //     graph.addNode("s012");
+    //     graph.addNode("s013");
+    //     graph.addNode("s014");       
+    //     graph.addNode("s015");
+    //     graph.addNode("s016");
+    //     graph.addNode("s017");
+    //     graph.addNode("s018");
+    //     graph.addNode("s019");
+
+    //     graph.addEdge("h000", "s012");
+    //     graph.addEdge("h001", "s012");
+    //     graph.addEdge("h002", "s013");
+    //     graph.addEdge("h003", "s013");
+    //     graph.addEdge("h004", "s014");
+    //     graph.addEdge("h005", "s014");
+    //     graph.addEdge("h006", "s015");
+    //     graph.addEdge("h007", "s015");
+    //     graph.addEdge("h008", "s016");
+    //     graph.addEdge("h009", "s016");
+    //     graph.addEdge("h010", "s017");
+    //     graph.addEdge("h011", "s017");
+    //     graph.addEdge("h012", "s018");
+    //     graph.addEdge("h013", "s018");
+    //     graph.addEdge("h014", "s019");
+    //     graph.addEdge("h015", "s019");
+
+    //     graph.addEdge("s012", "s004");
+    //     graph.addEdge("s013", "s004");
+    //     graph.addEdge("s012", "s005");
+    //     graph.addEdge("s013", "s005");
+    //     graph.addEdge("s014", "s006");
+    //     graph.addEdge("s015", "s006");
+    //     graph.addEdge("s014", "s007");
+    //     graph.addEdge("s015", "s007");
+    //     graph.addEdge("s016", "s008");
+    //     graph.addEdge("s017", "s008");
+    //     graph.addEdge("s016", "s009");
+    //     graph.addEdge("s017", "s009");
+    //     graph.addEdge("s018", "s010");
+    //     graph.addEdge("s019", "s010");
+    //     graph.addEdge("s018", "s011");
+    //     graph.addEdge("s019", "s011");
+
+    //     graph.addEdge("s004", "s000");
+    //     graph.addEdge("s006", "s000");
+    //     graph.addEdge("s008", "s000");
+    //     graph.addEdge("s010", "s000");
+
+    //     graph.addEdge("s004", "s001");
+    //     graph.addEdge("s006", "s001");
+    //     graph.addEdge("s008", "s001");
+    //     graph.addEdge("s010", "s001");
+
+    //     graph.addEdge("s005", "s002");
+    //     graph.addEdge("s007", "s002");
+    //     graph.addEdge("s009", "s002");
+    //     graph.addEdge("s011", "s002");
+
+    //     graph.addEdge("s005", "s003");
+    //     graph.addEdge("s007", "s003");
+    //     graph.addEdge("s009", "s003");
+    //     graph.addEdge("s011", "s003");
+
+    //     // System.out.println(graph.printGraph());
+    //     // List<List<String>> temp1 = graph.printAllPaths("h000", "h001");
+    //     List<List<String>> temp = graph.printAllPaths("h000", "h004");
+    //     List<List<String>> temp1 = graph.printAllPaths("h001", "h012");
+    //     System.out.println(temp.toString());
+    //     System.out.println(temp1.toString());
+    // }
 }
