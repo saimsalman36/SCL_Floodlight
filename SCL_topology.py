@@ -32,17 +32,17 @@ class MinimalTopo( Topo ):
         h005 = self.addHost("h005", ip='10.1.5.1');
         h006 = self.addHost("h006", ip='10.1.6.1');
         h007 = self.addHost("h007", ip='10.1.7.1');
-        # h008 = self.addHost("h008", ip='10.1.8.1');
-        # h009 = self.addHost("h009", ip='10.1.9.1');
-        # h010 = self.addHost("h010", ip='10.1.10.1');
-        # h011 = self.addHost("h011", ip='10.1.11.1');
-        # h012 = self.addHost("h012", ip='10.1.12.1');
-        # h013 = self.addHost("h013", ip='10.1.13.1');
-        # h014 = self.addHost("h014", ip='10.1.14.1');
-        # h015 = self.addHost("h015", ip='10.1.15.1');
+        h008 = self.addHost("h008", ip='10.1.8.1');
+        h009 = self.addHost("h009", ip='10.1.9.1');
+        h010 = self.addHost("h010", ip='10.1.10.1');
+        h011 = self.addHost("h011", ip='10.1.11.1');
+        h012 = self.addHost("h012", ip='10.1.12.1');
+        h013 = self.addHost("h013", ip='10.1.13.1');
+        h014 = self.addHost("h014", ip='10.1.14.1');
+        h015 = self.addHost("h015", ip='10.1.15.1');
 
         # s021 = self.addSwitch("s021", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:21", ip='10.0.21.1');
-        s020 = self.addSwitch("s000", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:00", ip='10.0.0.1');
+        s020 = self.addSwitch("s000", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:14", ip='10.0.0.1');
         s001 = self.addSwitch("s001", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:01", ip='10.0.1.1');
         s002 = self.addSwitch("s002", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:02", ip='10.0.2.1');
         s003 = self.addSwitch("s003", protocols='OpenFlow10', dpid="00:00:00:00:00:00:00:03", ip='10.0.3.1');
@@ -101,38 +101,21 @@ class MinimalTopo( Topo ):
         self.addLink(s019, s011);       
 
         self.addLink(h000, s012);
-        # self.addLink(h001, s012);
-        self.addLink(h001, s013);
-        # self.addLink(h003, s013);
-        self.addLink(h002, s014);
-        # self.addLink(h005, s014);
-        self.addLink(h003, s015);
-        # self.addLink(h007, s015);
-        self.addLink(h004, s016);
-        # self.addLink(h009, s016);
-        self.addLink(h005, s017);
-        # self.addLink(h011, s017);
-        self.addLink(h006, s018);
-        # self.addLink(h013, s018);
-        self.addLink(h007, s019);
-        # self.addLink(h015, s019);
-
-        # self.addLink(h000, s012);
-        # self.addLink(h001, s012);
-        # self.addLink(h002, s013);
-        # self.addLink(h003, s013);
-        # self.addLink(h004, s014);
-        # self.addLink(h005, s014);
-        # self.addLink(h006, s015);
-        # self.addLink(h007, s015);
-        # self.addLink(h008, s016);
-        # self.addLink(h009, s016);
-        # self.addLink(h010, s017);
-        # self.addLink(h011, s017);
-        # self.addLink(h012, s018);
-        # self.addLink(h013, s018);
-        # self.addLink(h014, s019);
-        # self.addLink(h015, s019);
+        self.addLink(h001, s012);
+        self.addLink(h002, s013);
+        self.addLink(h003, s013);
+        self.addLink(h004, s014);
+        self.addLink(h005, s014);
+        self.addLink(h006, s015);
+        self.addLink(h007, s015);
+        self.addLink(h008, s016);
+        self.addLink(h009, s016);
+        self.addLink(h010, s017);
+        self.addLink(h011, s017);
+        self.addLink(h012, s018);
+        self.addLink(h013, s018);
+        self.addLink(h014, s019);
+        self.addLink(h015, s019);
  
 
 def runMinimalTopo():
