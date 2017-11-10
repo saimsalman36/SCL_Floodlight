@@ -63,6 +63,8 @@ import net.floodlightcontroller.util.OFMessageDamper;
 import org.projectfloodlight.openflow.protocol.OFType;
 import java.util.EnumSet;
 
+import java.util.Random;
+
 class Triples {
     String host1;
     String host2;
@@ -81,9 +83,13 @@ class Triples {
 
 class NetworkX {
     Map<String, List<String>> graph;
+    Map<String, Map<String, Integer>> dist;
+    Map<String, Map<String, String>> next;
 
     public NetworkX() {
         graph = new HashMap<String, List<String>>();
+        dist = new HashMap<String, Map<String, Integer>>();
+        next = new HashMap<String, Map<String, String>>();
     }
 
     public String printGraph() {
@@ -102,6 +108,12 @@ class NetworkX {
             }
         }
 
+        return ret;
+    }
+
+    public List<String> listNodes() {
+        List<String> ret = new ArrayList<String>(graph.keySet());
+        ret.sort(String::compareToIgnoreCase);
         return ret;
     }
 
@@ -173,6 +185,76 @@ class NetworkX {
 
         return false;
     }
+
+    public void initializeParameters() {
+        List<String> otherHosts = this.listNodes();
+        otherHosts.forEach(i -> {
+            otherHosts.forEach(j -> {
+                if (this.dist.get(i) == null) {
+                    Map<String, Integer> temp = new HashMap<String, Integer>();
+                    temp.put(j, 9999);
+                    this.dist.put(i, temp);
+
+                    Map<String, String> tempNext = new HashMap<String, String>();
+                    tempNext.put(j, "");
+                    this.next.put(i, tempNext);
+                } else {
+                    this.dist.get(i).put(j, 9999);
+                    this.next.get(i).put(j, "");
+                }
+            });
+        });
+
+        otherHosts.forEach(i -> {
+            this.graph.get(i).forEach(j -> {
+                this.dist.get(i).put(j, 1);
+                this.next.get(i).put(j, j);
+            });
+        });
+    }
+
+    public void FloydWarshallWithPathReconstruction() {
+        initializeParameters();
+
+        List<String> otherHosts = listNodes();
+
+        Integer random = 0;
+
+        for (String k: otherHosts) {
+            for (String i: otherHosts) {
+                for (String j: otherHosts) {
+                    if (this.dist.get(i).get(j) == (this.dist.get(i).get(k) + this.dist.get(k).get(j))) {
+                        if (random == 0) {
+                            this.dist.get(i).put(j, this.dist.get(i).get(k) + this.dist.get(k).get(j));
+                            this.next.get(i).put(j, this.next.get(i).get(k));
+                            random = 1;
+                        } else {
+                            random = 0;
+                        }
+                    }
+
+                    if (this.dist.get(i).get(j) > (this.dist.get(i).get(k) + this.dist.get(k).get(j))) {
+                        this.dist.get(i).put(j, this.dist.get(i).get(k) + this.dist.get(k).get(j));
+                        this.next.get(i).put(j, this.next.get(i).get(k));
+                    }
+                }
+            }
+        }
+    }
+
+    public List<String> Path(String node1, String node2) {
+        if (this.next.get(node1).get(node2) == "") return null;
+
+        List<String> ret = new ArrayList<String>();
+        ret.add(node1);
+
+        while (!node1.equals(node2)) {
+            node1 = this.next.get(node1).get(node2);
+            ret.add(node1);
+        }
+
+        return ret;
+    }   
 
     public List<List<String>> printAllPaths(String node1, String node2) {
         Map<String, Boolean> visited = new HashMap<String, Boolean>();
@@ -320,6 +402,7 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
     protected static Logger logger;
 
     protected static List<Integer> EventCount;
+
 
     public void loadTopology(String jsonData) throws IOException{
         JsonParser jsonParser = new JsonFactory().createParser(jsonData);
@@ -688,6 +771,11 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
         }     
     }
 
+    void RandomFlow(String switchName) {
+        Link lnk = new Link(switchName, switchName + "-eth10", switchName, switchName + "-eth10", 10, 10);
+        updateFlowEntryOF14(switchName, "h001", "h001", lnk, "delete");
+    }
+
     void updateFlowEntryOF14(String switchName, String host1, String host2, Link lnk, String cmd) {
         IOFSwitch sw = swToConn.get(switchName);
 
@@ -776,7 +864,7 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
     }
 
     public Map<String, Map<String, List<Triples>>> calShortestRoute() {
-        Integer current = 0;        
+        // Integer current = 0;        
         Map<String, List<Triples>> tempMapModify = new HashMap<String, List<Triples>>();
         Map<String, List<Triples>> tempMapDelete = new HashMap<String, List<Triples>>();
 
@@ -789,15 +877,19 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
         updates.put("modify", tempMapDelete);
         updates.put("delete", tempMapModify);
 
+        this.networkGraph.FloydWarshallWithPathReconstruction();
+
         for (String host1 : this.hosts.keySet()) {
             for (String host2 : this.hosts.keySet()) {
                 if (host1.equals(host2)) continue;
-                List<List<String>> paths = this.networkGraph.printAllPaths(host1, host2);
-                if (paths.size() == 0) continue;
+                // List<List<String>> paths = this.networkGraph.printAllPaths(host1, host2);
+                // if (paths.size() == 0) continue;
+                List<String> path = this.networkGraph.Path(host1, host2);
+                if (path == null) continue;
 
-                List<String> path = paths.get(current % paths.size());
+                // List<String> path = paths.get(current % paths.size());
                 // logger.info("Shortest Path: " + path.toString());
-                current += 1;
+                // current += 1;
 
                 for (int i = 1; i < path.size() - 1; i++) {
                     String a = path.get(i);
@@ -881,6 +973,8 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
 
         // logger.info("Switch Added -- Now using the ports to update flow entries.");
 
+
+
         Collection<OFPort> portCollection = sw.getEnabledPortNumbers();
 
         for (OFPort port : portCollection) {
@@ -925,8 +1019,21 @@ public class SCL implements IFloodlightModule, IOFSwitchListener {
                 }
             }
         }
+
+
         updateFlowEntries(calShortestRoute());
-        logger.info("Event Count: " + EventCount.toString());
+
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    Thread.sleep(100);
+                    RandomFlow(swName);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }).start();
     }
 
  
